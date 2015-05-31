@@ -1,0 +1,40 @@
+{
+  "name": "mockdown",
+  "version": "0.1.0",
+  "description": "Run your docs' examples as mocha test suites",
+  "repository": "git@github.com:pjeby/mockdown.git",
+  "homepage": "https://github.com/pjeby/mockdown",
+  "main": "mockdown.js",
+  "files": [
+    "mockdown.js",
+    "console.js"
+  ],
+  "scripts": {
+    "test": "gulp test",
+    "prepublish": "gulp build"
+  },
+  "keywords": [
+    "mocha",
+    "literate-testing",
+    "literate testing",
+    "doctest",
+    "doctests",
+    "markdown",
+    "document-driven testing"
+  ],
+  "author": "PJ Eby <pje@telecommunity.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "^1.18.2",
+    "coffee-script": "^1.9.3",
+    "gulp-mocha": "^0.4.1",
+    "gulp-coffee": "^2.3.1",
+    "gulp": "^3.8.0",
+    "chai": "^1.9.1",
+    "sinon-chai": "^2.5.0",
+    "sinon": "^1.9.1"
+  },
+  "dependencies": {
+    "marked": "^0.3.3"
+  }
+}
