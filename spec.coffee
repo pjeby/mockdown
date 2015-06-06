@@ -59,7 +59,8 @@ describe "mockdown.Waiter(cb)", ->
 
     describe ".waitThenable()", ->
         it "returns its argument"
-        it "registers callbacks that invoke @done"
+        it "invokes @done when the thenable resolves"
+        it "forwards thenable errors to @done"
         it "marks the waiter as waiting"
         it "throws an error if already finished"
 
@@ -68,6 +69,7 @@ describe "mockdown.Waiter(cb)", ->
         it "calls pred repeatedly"
         it "uses the timeout value given"
         it "returns a timeout that can be canceled"
+        it "forwards predicate() errors to @done"
         it "marks the waiter as waiting"
         it "throws an error if already finished"
 
@@ -75,8 +77,6 @@ describe "mockdown.Waiter(cb)", ->
         it "returns the .done method"
         it "marks the waiter as waiting"
         it "throws an error if already finished"
-
-
 
 
 
@@ -121,19 +121,60 @@ describe "mockdown.Waiter(cb)", ->
 
 
 
+describe "mockdown.Environment(globals)", ->
+
+    beforeEach ->
+        @env = new Environment(x:1, y:2)
+
+    describe ".run(code, opts)", ->
+        it "returns the result"
+        it "throws any syntax errors"
+        it "throws any runtime errors"
+        it "sets the filename"
+
+    describe ".getOutput()", ->
+        it "returns all log/dir/warn/error text from .context.console"
+        it "accumulates output until called"
+        it "resets after each call"
+
+    describe ".context variables", ->
+        it "include the globals used to create the environment"
+        it "are readable by run() code"
+        it "are writable by run() code"
+        it "can be defined by run() code"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 describe "mockdown.lex(src)", ->
 
     check = (src, out) -> lex(src).should.eql(out)
 
     it "assigns line numbers", -> check """\
         # Heading
-    
+
         para
         """, [
           {type:'heading', depth:1, text: 'Heading', line:1}
           {type:'paragraph', text:'para', line:3}
         ]
-    
+
     it "nests blockquotes", -> check """\
         > Text.
         >
@@ -144,7 +185,7 @@ describe "mockdown.lex(src)", ->
             {type: 'code', text: 'code()', line: 3}
           ]
         }]
-    
+
     it "tracks the original whitespace in a blockquote", -> check """\
         >     Sample
         >
@@ -164,13 +205,13 @@ describe "mockdown.lex(src)", ->
 
     it "works around marked.Lexer ignoring single blank lines", -> check """\
         <!-- foo -->
-    
+
         bar
         """, [
           {type: 'html', text: '<!-- foo -->\n', pre:no, line:1}
           {type: 'paragraph', text:'bar', line:3}
         ]
-    
+
     it "nests lists and list items (w/o line numbers)", -> check """\
         - Outer list
           - Inner list
@@ -195,7 +236,7 @@ describe "mockdown.lex(src)", ->
           ]
         }]
 
-
+    it "parses mockdown directives"
 
 
 
