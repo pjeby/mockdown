@@ -39,6 +39,88 @@
 
 
 
+### Environment Objects
+
+An environment is like a stripped-down node REPL that runs code samples in
+a `.context` that retains its state and records its console output.  It uses
+node's `REPLServer` class to create a suitable global context, given a dummy
+`.outputStream` whose `.write()` method accumulates output in an array.  The
+supplied globals are added to the `.context` after first fixing up the builtins
+(in the event we're running on a node version that doesn't share builtins
+across contexts.)
+
+    class mockdown.Environment
+
+        repl = require 'repl'
+
+        constructor: (globals) ->
+            @useGlobal = no
+            @outputStream = []
+            @outputStream.write = @outputStream.push
+
+            @context = repl.REPLServer::createContext.call(this)
+            @copyBuiltins() unless @context.Array is Array
+            @context[k] = v for own k, v of globals
+
+        copyBuiltins: ->
+            @context[k] = global[k] for k in ['NaN', 'Infinity', 'undefined',
+                'eval', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'decodeURI',
+                'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
+                'Object', 'Function', 'Array', 'String', 'Boolean', 'Number',
+                'Date', 'RegExp', 'Error', 'EvalError', 'RangeError',
+                'ReferenceError', 'SyntaxError', 'TypeError', 'URIError',
+                'Math', 'JSON'
+            ]
+
+In principle, running a code sample is as simple as creating a `vm.Script` and
+running it.  But in practice, node 0.12 and up expect an options object rather
+than a filename, so if the supplied options contain a filename, we have to
+figure out whether we're running on something newer than that, by checking for
+the existence of `vm.runInDebugContext()` (which was added in 0.12).
+
+        vm = require 'vm'
+        
+        run: (code, opts={}) ->
+            script = if opts.filename then new vm.Script(code,
+                        if vm.runInDebugContext?    # new API
+                            {filename: opts.filename, displayErrors:false}
+                        else opts.filename
+                    )
+            else new vm.Script(code)
+            res = script.runInContext(@context)
+
+Once the result of running the script is obtained, it's written to the console,
+unless it's been disabled by setting the options' `.printResults` to false.
+(Undefined values aren't printed, though, unless the `.ignoreUndefined'` option
+has been set to false.)  In any event, the current `repl.writer` is used to
+format the output, unless it's overridden via the `.writer` option.
+
+            if opts.printResults ? true
+                unless res is undefined and (opts.ignoreUndefined ? true)
+                    @outputStream.write (opts.writer ? repl.writer)(res)+'\n'
+            return res
+
+Last, but not least, the `.getOutput()` method just returns the current
+accumulated output and resets it to accumulate from empty again.
+
+        getOutput: -> @outputStream.splice(0).join ''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### Waiting For Test Completion
 
 Mockdown examples can run synchronously or asynchronously, depending on whether

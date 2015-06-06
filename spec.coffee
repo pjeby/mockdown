@@ -287,42 +287,83 @@ describe "mockdown.Waiter(cb)", ->
 
 describe "mockdown.Environment(globals)", ->
 
-    beforeEach ->
-        @env = new Environment(x:1, y:2)
+    beforeEach -> @env = new Environment(x:1, y:2)
 
     describe ".run(code, opts)", ->
-        it "returns the result"
-        it "throws any syntax errors"
-        it "throws any runtime errors"
-        it "sets the filename"
 
-    describe ".getOutput()", ->
-        it "returns all log/dir/warn/error text from .context.console"
-        it "accumulates output until called"
-        it "resets after each call"
+        it "returns the result", ->
+            expect(@env.run('1')).to.equal(1)
+
+        it "throws any syntax errors", ->
+            expect(=> @env.run('if;')).to.throw SyntaxError
+
+        it "throws any runtime errors", ->
+            expect(=> @env.run('throw new TypeError')).to.throw(
+               TypeError
+            )
+                
+        it "sets the filename from opts.filename", ->
+            try
+                @env.run('throw new Error', filename: 'foobar.js')
+            catch e
+                expect(e.stack).to.match /at foobar.js:1/
 
     describe ".context variables", ->
-        it "include the globals used to create the environment"
-        it "are readable by run() code"
-        it "are writable by run() code"
-        it "can be defined by run() code"
 
+        it "include the globals used to create the environment", ->
+            expect(@env.context.x).to.equal(1)
+            expect(@env.context.y).to.equal(2)
 
+        it "are readable by run() code", ->
+            expect(@env.run('[x,y]')).to.eql([1,2])
 
+        it "are writable by run() code", ->
+            @env.run('var x=3; y=4')
+            expect(@env.context.x).to.equal(3)
+            expect(@env.context.y).to.equal(4)
 
+        it "can be defined by run() code", ->
+            @env.run('var z=42')
+            expect(@env.context.z).to.equal(42)
 
+    describe ".getOutput()", ->
 
+        beforeEach -> @console = @env.context.console
 
+        it "returns all log/dir/warn/error text from .context.console", ->
+            @console.error("w")
+            @console.warn("x")
+            @console.log("y")
+            @console.dir("z")
+            expect(@env.getOutput().split('\n')).to.eql(
+                ['w','x','y',"'z'", ""]
+            )
+        it "resets after each call", ->
+            @console.log("x")
+            expect(@env.getOutput().split('\n')).to.eql(['x',''])
+            expect(@env.getOutput()).to.eql('')
 
+    describe "result logging", ->
 
+        it "logs results other than undefined", ->
+            @env.run('1')
+            @env.run('null')
+            @env.run('if(0) 1;')
+            expect(@env.getOutput()).to.eql('1\nnull\n')
+        
+        it "logs undefined if opts.ignoreUndefined is false", ->
+            @env.run('if(0) 1;', ignoreUndefined: no)
+            expect(@env.getOutput()).to.eql('undefined\n')
 
+        it "uses opts.writer if specified", ->
+            @env.run('2', writer: writer = spy.named 'writer', -> 'hoohah!')            
+            expect(@env.getOutput()).to.eql('hoohah!\n')
+            expect(writer).to.have.been.calledOnce
+            expect(writer).to.have.been.calledWithExactly(2)
 
-
-
-
-
-
-
+        it "doesn't log results if disabled", ->
+            @env.run('1', printResults: no)
+            expect(@env.getOutput()).to.eql('')
 
 
 
