@@ -41,70 +41,234 @@ failSafe = (done, fn) -> ->
 
 describe "mockdown.Waiter(cb)", ->
 
-    beforeEach ->
-        @waiter = new Waiter(@spy = spy.named 'done')
+    beforeEach -> @waiter = new Waiter(@spy = spy.named 'done')
 
     describe "calls cb() with null context", ->
-        it "when .done()"
-        it "when .done(err)"
+
+        it "when .done() called as method", ->
+            @waiter.done()
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly()
+            expect(@spy).to.have.been.calledOn(null)
+            
+        it "when .done(err) called as method", ->
+            @waiter.done(e=new Error)
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly(e)
+            expect(@spy).to.have.been.calledOn(null)
+
+        it "when done() called as function", ->
+            done = @waiter.done
+            done()
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly()
+            expect(@spy).to.have.been.calledOn(null)
+            
+        it "when done(err) called as function", ->
+            done = @waiter.done
+            done(e=new Error)
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly(e)
+            expect(@spy).to.have.been.calledOn(null)
 
     describe ".finished", ->
-        it "is initially false if a callback is given"
-        it "is true immediately if no callback is given"
-        it "becomes true as soon as done() is called"
+
+        it "is initially false", ->
+            expect(@waiter.finished).to.be.false
+
+        it "becomes true as soon as done() is called", ->
+            waiter = new Waiter(-> expect(waiter.finished).to.be.true)
+            waiter.done()
 
     describe ".waiting", ->
-        it "is initially false"
-        it "is set to false as soon as done() is called"
+
+        it "is initially false", ->
+            expect(@waiter.waiting).to.be.false
+
+        it "is set to false as soon as done() is called", ->
+            waiter = new Waiter(-> expect(waiter.waiting).to.be.false)
+            waiter.waiting = true
+            waiter.done()
 
     describe ".waitThenable()", ->
-        it "returns its argument"
-        it "invokes @done when the thenable resolves"
-        it "forwards thenable errors to @done"
-        it "marks the waiter as waiting"
-        it "throws an error if already finished"
+
+        beforeEach ->
+            @thenable = then: @thenSpy = spy.named 'then', (@onF, @onR) =>
+            return
+
+        it "returns its argument", ->
+            expect(@waiter.waitThenable(@thenable)).to.equal(@thenable)
+
+        it "passes distinct callbacks to thenable.then()", ->
+            @waiter.waitThenable(@thenable)
+            expect(@thenSpy).to.have.been.calledOnce
+            expect(@thenSpy).to.have.been.calledWithExactly(@onF, @onR)
+            expect_fn(@onF)
+            expect_fn(@onR)
+            expect(@onF).to.not.equal(@onR)
+
+        it "invokes @done when the thenable resolves", ->
+            @waiter.waitThenable(@thenable)
+            @onF(42)
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly()
+            expect(@spy).to.have.been.calledOn(null)
+
+        it "forwards thenable errors to @done", ->
+            @waiter.waitThenable(@thenable)
+            @onR(e = new Error)
+            expect(@spy).to.have.been.calledOnce
+            expect(@spy).to.have.been.calledWithExactly(e)
+            expect(@spy).to.have.been.calledOn(null)
+            
+        it "handles falsy promise resolution", ->
+            waiter = new Waiter reject = spy.named 'reject', (e) ->
+                expect(e).to.exist
+                expect(e).to.be.instanceOf(Error)
+                expect(-> throw e).to.throw /rejection/
+                
+            waiter.waitThenable(@thenable)
+            @onR()
+            expect(reject).to.have.been.calledOnce
+            expect(reject).to.have.been.calledOn(null)
+            
+        it "marks the waiter as waiting", ->
+            @waiter.waitThenable(@thenable)
+            expect(@waiter.waiting).to.be.true
+
+        it "throws an error if already finished", ->
+            @waiter.done()
+            expect(
+                => @waiter.waitThenable(@thenable)
+            ).to.throw /already finished/
+
 
     describe ".waitPredicate(pred, interval)", ->
-        it "calls pred after the timeout"
-        it "calls pred repeatedly"
-        it "uses the timeout value given"
-        it "returns a timeout that can be canceled"
-        it "forwards predicate() errors to @done"
-        it "marks the waiter as waiting"
-        it "throws an error if already finished"
 
-    describe ".wait()", ->
-        it "returns the .done method"
-        it "marks the waiter as waiting"
-        it "throws an error if already finished"
+        it "calls pred after the timeout", (done) ->
+            @waiter.waitPredicate pred = spy.named 'pred', -> true
+            setTimeout (failSafe done, =>
+                expect(pred).to.have.been.calledOnce
+                expect(@spy).to.have.been.calledOnce
+                done()
+            ), 5
+
+        it "calls pred repeatedly, until it returns true", (done) ->
+            @runnable().slow(100)
+            count = 3
+            pred = spy.named 'pred', -> --count is 0
+            waiter = new Waiter failSafe done, =>
+                expect(pred).to.have.been.calledThrice
+                done()
+            waiter.waitPredicate(pred)
+
+        it "uses the timeout value given", (done) ->
+            @waiter.waitPredicate (pred = spy.named 'pred', -> true), 20
+            setTimeout (failSafe done, =>
+                expect(pred).to.not.have.been.called
+            ), 5
+            setTimeout (failSafe done, =>
+                expect(pred).to.have.been.calledOnce
+                expect(@spy).to.have.been.calledOnce
+                done()
+            ), 30
+
+        it "returns a timeout that can be canceled", (done) ->
+            timeout = @waiter.waitPredicate (pred = spy.named 'pred', -> true)
+            clearTimeout(timeout)
+            setTimeout (failSafe done, =>
+                expect(pred).to.not.have.been.called
+                done()
+            ), 10
+
+        it "forwards predicate() errors to @done", (done) ->
+            err = new Error()
+            @waiter.waitPredicate pred = spy.named 'pred', -> throw err
+            setTimeout (failSafe done, =>
+                expect(pred).to.have.been.calledOnce
+                expect(@spy).to.have.been.calledOnce
+                expect(@spy).to.have.been.calledWithExactly(err)
+                done()
+            ), 10
+            
+        it "doesn't call the predicate if finished before timeout", (done) ->
+            @waiter.waitPredicate (pred = spy.named 'pred', -> true)
+            @waiter.done()
+            setTimeout (failSafe done, =>
+                expect(pred).to.not.have.been.called
+                done()
+            ), 10
+            
+        it "marks the waiter as waiting", ->
+            @waiter.waitPredicate(-> yes)
+            expect(@waiter.waiting).to.be.true
+
+        it "throws an error if already finished", ->
+            @waiter.done()
+            expect(
+                => @waiter.waitPredicate(-> yes)
+            ).to.throw /already finished/
+
+    describe "bound method .wait", ->
+
+        beforeEach ->
+            @spyPred = spy.named "waitPredicate", @waiter, "waitPredicate"
+            @spyThen = spy.named "waitThenable", @waiter, "waitThenable"
+            @wait = @waiter.wait
+
+        it "() -> the waiter's .done method", ->
+            expect(@wait()).to.equal(@waiter.done)
+
+        it "() -> marks the waiter as waiting", ->
+            @wait()
+            expect(@waiter.waiting).to.be.true
+
+        it "() -> throws an error if already finished", ->
+            @waiter.done()
+            expect(@wait).to.throw /already finished/
+
+        it "(number) -> .waitPredicate(->yes, number)", ->
+            res = @wait(99)
+            expect(@spyPred).to.have.been.calledOnce
+            expect(@spyPred).to.have.returned(res)
+            expect_fn(pred = @spyPred.args[0][0])
+            expect(pred()).to.be.true
+            expect(@spyPred.args[0][1]).to.equal(99)
+
+        it "(number, function) -> .waitPredicate(function, number)", ->
+            res = @wait(0, pred = -> yes)
+            expect(@spyPred).to.have.been.calledOnce
+            expect(@spyPred).to.have.been.calledWithExactly(pred, 0)
+            expect(@spyPred).to.have.returned(res)
 
 
 
-    describe ".wait(number)", ->
-        it "returns .waitPredicate(->yes, number)"
+            
+        it "(function) -> .waitPredicate(function)", ->
+            res = @wait(pred = -> yes)
+            expect(@spyPred).to.have.been.calledOnce
+            expect(@spyPred).to.have.been.calledWithExactly(pred)
+            expect(@spyPred).to.have.returned(res)
 
-    describe ".wait(number, function)", ->
-        it "returns .waitPredicate(function, number)"
+        it "(thenable-object) -> .waitThenable(thenable-object)", ->
+            res = @wait(thenable = then: ->)
+            expect(@spyThen).to.have.been.calledOnce
+            expect(@spyThen).to.have.been.calledWithExactly(thenable)
+            expect(res).to.equal(thenable)
+            
+        it "(thenable-function) -> .waitThenable(thenable-function)", ->
+            thenable = ->
+            thenable.then = ->
+            res = @wait(thenable)
+            expect(@spyThen).to.have.been.calledOnce
+            expect(@spyThen).to.have.been.calledWithExactly(thenable)
+            expect(res).to.equal(thenable)
 
-    describe ".wait(function)", ->
-        it "returns .waitPredicate(function)"
-
-    describe ".wait(thenable) returns thenable", ->
-        it "when thenable is an object"
-        it "when thenable is a function"
-
-    describe ".wait(anything else)", ->
-        it "throws a TypeError"
-
-
-
-
-
-
-
-
-
-
+        describe "(anything else) -> throws TypeError", ->
+            for arg in [{then:1}, "string", null, undefined, true, false]
+                do (arg) -> it "with #{arg}", ->
+                    expect(=> @wait(arg)).to.throw TypeError
+                    expect(=> @wait(arg)).to.throw /must wait on/
 
 
 
