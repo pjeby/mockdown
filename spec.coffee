@@ -14,7 +14,89 @@ failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
-{lex, Document, Section, Example, Environment, Console} = require './'
+{lex, Section, Example, Environment, Document, Waiter} = require './'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+describe "mockdown.Waiter(cb)", ->
+
+    beforeEach ->
+        @waiter = new Waiter(@spy = spy.named 'done')
+
+    describe "calls cb() with null context", ->
+        it "when .done()"
+        it "when .done(err)"
+
+    describe ".finished", ->
+        it "is initially false if a callback is given"
+        it "is true immediately if no callback is given"
+        it "becomes true as soon as done() is called"
+
+    describe ".waiting", ->
+        it "is initially false"
+        it "is set to false as soon as done() is called"
+
+    describe ".waitThenable()", ->
+        it "returns its argument"
+        it "registers callbacks that invoke @done"
+        it "marks the waiter as waiting"
+        it "throws an error if already finished"
+
+    describe ".waitPredicate(pred, interval)", ->
+        it "calls pred after the timeout"
+        it "calls pred repeatedly"
+        it "uses the timeout value given"
+        it "returns a timeout that can be canceled"
+        it "marks the waiter as waiting"
+        it "throws an error if already finished"
+
+    describe ".wait()", ->
+        it "returns the .done method"
+        it "marks the waiter as waiting"
+        it "throws an error if already finished"
+
+
+
+
+
+    describe ".wait(number)", ->
+        it "returns .waitPredicate(->yes, number)"
+
+    describe ".wait(number, function)", ->
+        it "returns .waitPredicate(function, number)"
+
+    describe ".wait(function)", ->
+        it "returns .waitPredicate(function)"
+
+    describe ".wait(thenable) returns thenable", ->
+        it "when thenable is an object"
+        it "when thenable is a function"
+
+    describe ".wait(anything else)", ->
+        it "throws a TypeError"
+
+
 
 
 
