@@ -22,7 +22,7 @@ assigning to an object that inherits from the global context, as with the
                     value: arg[k], writable, configurable, enumerable
                 })
         return to
-            
+
 
 
 
@@ -142,7 +142,7 @@ add dummy globals for already-existing context or global variables.
             globals = Object.create(@context)
             funcs = []
 
-            recast.visit recast.parse(src), 
+            recast.visit recast.parse(src),
 
                 visitAssignmentExpression: (p) ->
                     @traverse(p)
@@ -171,7 +171,7 @@ instead of the global context.
                     @traverse(p)
                     if p.scope.isGlobal
                         {line, column} = p.node.loc.start
-                        src = replaceAt(src, line, column, 'this', 'THIS')                       
+                        src = replaceAt(src, line, column, 'this', 'THIS')
 
 Once the global variables are found, we can add them directly to our context.
 (Since `.addProps()` only copies own-properties, this won't overwrite any
@@ -196,7 +196,7 @@ the same line, the column positions of earlier declarations will remain valid.
 The actual source code replacement is done with a parameterized regular
 expression that handles counting lines and columns.
 
-        replaceAt = (TEXT, ROW, COL, MATCH, REPLACE) -> 
+        replaceAt = (TEXT, ROW, COL, MATCH, REPLACE) ->
             match = ///^
                 ((?:[^\n]*\n){#{ROW-1}}.{#{COL}})#{MATCH}(.*)
             $///.exec(TEXT)
@@ -230,7 +230,7 @@ our context when it executes.  (It's not needed after that.)
         run: (code, opts={}) ->
             toScript(code, opts.filename) # force syntax error here
             script = toScript(@rewrite(code), opts.filename)
-            
+
             current_global = global
             current_global.MOCKDOWN_GLOBAL = @context
             try

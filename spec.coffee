@@ -50,7 +50,7 @@ describe "mockdown.Waiter(cb)", ->
             expect(@spy).to.have.been.calledOnce
             expect(@spy).to.have.been.calledWithExactly()
             expect(@spy).to.have.been.calledOn(null)
-            
+
         it "when .done(err) called as method", ->
             @waiter.done(e=new Error)
             expect(@spy).to.have.been.calledOnce
@@ -63,7 +63,7 @@ describe "mockdown.Waiter(cb)", ->
             expect(@spy).to.have.been.calledOnce
             expect(@spy).to.have.been.calledWithExactly()
             expect(@spy).to.have.been.calledOn(null)
-            
+
         it "when done(err) called as function", ->
             done = @waiter.done
             done(e=new Error)
@@ -120,18 +120,18 @@ describe "mockdown.Waiter(cb)", ->
             expect(@spy).to.have.been.calledOnce
             expect(@spy).to.have.been.calledWithExactly(e)
             expect(@spy).to.have.been.calledOn(null)
-            
+
         it "handles falsy promise resolution", ->
             waiter = new Waiter reject = spy.named 'reject', (e) ->
                 expect(e).to.exist
                 expect(e).to.be.instanceOf(Error)
                 expect(-> throw e).to.throw /rejection/
-                
+
             waiter.waitThenable(@thenable)
             @onR()
             expect(reject).to.have.been.calledOnce
             expect(reject).to.have.been.calledOn(null)
-            
+
         it "marks the waiter as waiting", ->
             @waiter.waitThenable(@thenable)
             expect(@waiter.waiting).to.be.true
@@ -190,7 +190,7 @@ describe "mockdown.Waiter(cb)", ->
                 expect(@spy).to.have.been.calledWithExactly(err)
                 done()
             ), 10
-            
+
         it "doesn't call the predicate if finished before timeout", (done) ->
             @waiter.waitPredicate (pred = spy.named 'pred', -> true)
             @waiter.done()
@@ -198,7 +198,7 @@ describe "mockdown.Waiter(cb)", ->
                 expect(pred).to.not.have.been.called
                 done()
             ), 10
-            
+
         it "marks the waiter as waiting", ->
             @waiter.waitPredicate(-> yes)
             expect(@waiter.waiting).to.be.true
@@ -243,7 +243,7 @@ describe "mockdown.Waiter(cb)", ->
 
 
 
-            
+
         it "(function) -> .waitPredicate(function)", ->
             res = @wait(pred = -> yes)
             expect(@spyPred).to.have.been.calledOnce
@@ -255,7 +255,7 @@ describe "mockdown.Waiter(cb)", ->
             expect(@spyThen).to.have.been.calledOnce
             expect(@spyThen).to.have.been.calledWithExactly(thenable)
             expect(res).to.equal(thenable)
-            
+
         it "(thenable-function) -> .waitThenable(thenable-function)", ->
             thenable = ->
             thenable.then = ->
@@ -301,7 +301,7 @@ describe "mockdown.Environment(globals)", ->
             expect(=> @env.run('throw new TypeError')).to.throw(
                TypeError
             )
-                
+
         it "sets the filename from opts.filename", ->
             try
                 @env.run('throw new Error', filename: 'foobar.js')
@@ -329,7 +329,7 @@ describe "mockdown.Environment(globals)", ->
         describe "prevents global assignment via", ->
 
             afterEach -> expect(typeof foobly).to.equal "undefined"
-            
+
             it "simple assignment", -> expect(@env.run('foobly=1')).to.equal(1)
 
             it "var declaration", -> expect(@env.run(
@@ -343,11 +343,11 @@ describe "mockdown.Environment(globals)", ->
             it "function declaration", -> expect(@env.run(
                 'function foobly() { return 4; }; foobly()'
             )).to.equal(4)
-            
+
             it "conditional declaration", -> expect(@env.run(
                 'if (1) function foobly() { return 5; }; foobly()'
             )).to.equal(5)
-            
+
             it "strict mode assignment", -> expect(@env.run(
                 'function x() { "use strict"; foobly=6; }; x(); foobly'
             )).to.equal(6)
@@ -407,7 +407,7 @@ describe "mockdown.Environment(globals)", ->
             expect(m1.exports).to.equal(c1.exports).and.equal(nx1)
             nx2 = m2.exports = {}
             expect(m2.exports).to.equal(c2.exports).and.equal(nx2)
-            
+
     describe ".getOutput()", ->
 
         beforeEach -> @console = @env.context.console
@@ -433,13 +433,13 @@ describe "mockdown.Environment(globals)", ->
             @env.run('null')
             @env.run('if(0) 1;')
             expect(@env.getOutput()).to.eql('1\nnull\n')
-        
+
         it "logs undefined if opts.ignoreUndefined is false", ->
             @env.run('if(0) 1;', ignoreUndefined: no)
             expect(@env.getOutput()).to.eql('undefined\n')
 
         it "uses opts.writer if specified", ->
-            @env.run('2', writer: writer = spy.named 'writer', -> 'hoohah!')            
+            @env.run('2', writer: writer = spy.named 'writer', -> 'hoohah!')
             expect(@env.getOutput()).to.eql('hoohah!\n')
             expect(writer).to.have.been.calledOnce
             expect(writer).to.have.been.calledWithExactly(2)
