@@ -385,11 +385,29 @@ describe "mockdown.Environment(globals)", ->
             @env.run('var z=42')
             expect(@env.context.z).to.equal(42)
 
-        it "has a global and GLOBAL that map to the context", ->
+        it "include a global and GLOBAL that map to the context", ->
             expect(@env.run('global')).to.equal(@env.context)
             expect(@env.run('GLOBAL')).to.equal(@env.context)
 
+        it "include a complete `require()` implementation", ->
+            req = @env.context.require
+            expect(req('./spec.coffee')).to.equal(exports)
+            expect(req.cache).to.equal(require.cache)
+            expect(req.resolve('./spec.coffee')).to.equal(
+                   require.resolve('./spec.coffee'))
 
+        it "include a unique (but linked) exports and module.exports", ->
+            e1 = @env;  e2 = new Environment()
+            expect(c1 = e1.context).to.not.equal(c2 = e2.context)
+            expect(m1 = c1.module) .to.not.equal(m2 = c2.module)
+            expect(x1 = m1.exports).to.not.equal(x2 = m2.exports)
+            expect(x1).to.exist.and.equal(c1.exports).and.deep.equal({})
+            expect(x2).to.exist.and.equal(c2.exports).and.deep.equal({})
+            nx1 = c1.exports = {}
+            expect(m1.exports).to.equal(c1.exports).and.equal(nx1)
+            nx2 = m2.exports = {}
+            expect(m2.exports).to.equal(c2.exports).and.equal(nx2)
+            
     describe ".getOutput()", ->
 
         beforeEach -> @console = @env.context.console
@@ -430,6 +448,7 @@ describe "mockdown.Environment(globals)", ->
             @env.run('1', printResults: no)
             expect(@env.getOutput()).to.eql('')
 
+
     describe ".rewrite(code)", ->
 
         it "doesn't rewrite inner `this`", ->
@@ -440,6 +459,28 @@ describe "mockdown.Environment(globals)", ->
             it "tabs messing up offset positions"
             it "carriage returns and other zero-space characters"
             it "wide character offsets"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

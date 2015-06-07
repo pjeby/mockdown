@@ -2,27 +2,27 @@
 
     mockdown = exports
 
+### Utility Functions
 
+#### `assign()`
 
+The `assign()` function is roughly equivalent to an `Object.assign()` polyfill,
+except that it uses `Object.defineProperty()` to ensure that e.g. an inherited
+descriptor on the target can't veto an assignment.  (As can happen when
+assigning to an object that inherits from the global context, as with the
+`.context` property of a `mockdown.Environment`.)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    assign = (target={}) ->
+        to = Object(target)
+        writable = configurable = enumerable = yes
+        for arg, i in arguments when i and arg?     # skip first and empties
+            arg = Object(arg)
+            for k in Object.keys(arg)
+                Object.defineProperty(to, k, {
+                    value: arg[k], writable, configurable, enumerable
+                })
+        return to
+            
 
 
 
@@ -62,18 +62,59 @@ initially-provided globals).
                 global: ctx
                 GLOBAL: ctx
                 THIS: ctx       # Used for rewrites of top-level `this`
+                module: @dummyModule()
+                exports: {}
+                require: require
             ).addProps(globals)
 
 Properties are normally added via assignment, but some globals aren't writable;
 we use defineProperty to redefine them.
 
         addProps: (props) ->
-            ctx = @context
-            for own k, v of props
-                ctx[k] = v
-                if ctx[k] isnt v
-                    Object.defineProperty(ctx, k, value: v)
+            assign(@context, props)
             return this
+
+
+
+
+
+
+
+#### Supporting require() and module.exports in code samples
+
+In order to allow `require()` to work in code samples by default, we use
+roughly the same hack as the node `repl` module uses, and modify our module
+lookup paths to be based on the current directory.  (So if you don't override
+`require` in an environment's context, you'll get a require that works relative
+to the current directory.)
+
+For the exposed `module`, we use a clone of the mockdown module, with an
+`exports` property that gets/sets the context `exports`, so that code samples
+can run in an environment that closely resembles a standard module.
+
+        dummyModule: ->
+            return Object.create(module, exports: {
+                get: => @context.exports
+                set: (v) => @context.exports = v
+                enumerable: yes
+            })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
