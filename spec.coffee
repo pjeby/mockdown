@@ -308,6 +308,65 @@ describe "mockdown.Environment(globals)", ->
             catch e
                 expect(e.stack).to.match /at foobar.js:1/
 
+        it "uses the same Javascript engine", ->
+            expect(@env.run('[]')).to.be.instanceOf Array
+            expect(@env.run('({})')).to.be.instanceOf Object
+            expect(@env.run('(function(){})')).to.be.instanceOf Function
+            expect(@env.run('new Error')).to.be.instanceOf Error
+
+
+
+
+
+
+
+
+
+
+
+
+
+        describe "prevents global assignment via", ->
+
+            afterEach -> expect(typeof foobly).to.equal "undefined"
+            
+            it "simple assignment", -> expect(@env.run('foobly=1')).to.equal(1)
+
+            it "var declaration", -> expect(@env.run(
+                'var q, foobly=2; foobly'
+            )).to.equal(2)
+
+            it "nested assignment", -> expect(@env.run(
+                'function q(){ return foobly=3;}; q()'
+            )).to.equal(3)
+
+            it "function declaration", -> expect(@env.run(
+                'function foobly() { return 4; }; foobly()'
+            )).to.equal(4)
+            
+            it "conditional declaration", -> expect(@env.run(
+                'if (1) function foobly() { return 5; }; foobly()'
+            )).to.equal(5)
+            
+            it "strict mode assignment", -> expect(@env.run(
+                'function x() { "use strict"; foobly=6; }; x(); foobly'
+            )).to.equal(6)
+
+            it "global.property assignment", -> expect(@env.run(
+                'global.foobly = 7; foobly'
+            )).to.equal(7)
+
+            it "`this` assignment", ->
+                expect(@env.run('this.foobly = 8; foobly')).to.equal(8)
+
+
+
+
+
+
+
+
+
     describe ".context variables", ->
 
         it "include the globals used to create the environment", ->
@@ -326,6 +385,11 @@ describe "mockdown.Environment(globals)", ->
             @env.run('var z=42')
             expect(@env.context.z).to.equal(42)
 
+        it "has a global and GLOBAL that map to the context", ->
+            expect(@env.run('global')).to.equal(@env.context)
+            expect(@env.run('GLOBAL')).to.equal(@env.context)
+
+
     describe ".getOutput()", ->
 
         beforeEach -> @console = @env.context.console
@@ -342,6 +406,7 @@ describe "mockdown.Environment(globals)", ->
             @console.log("x")
             expect(@env.getOutput().split('\n')).to.eql(['x',''])
             expect(@env.getOutput()).to.eql('')
+
 
     describe "result logging", ->
 
@@ -364,6 +429,23 @@ describe "mockdown.Environment(globals)", ->
         it "doesn't log results if disabled", ->
             @env.run('1', printResults: no)
             expect(@env.getOutput()).to.eql('')
+
+    describe ".rewrite(code)", ->
+
+        it "doesn't rewrite inner `this`", ->
+            expect(@env.rewrite(src = '(function(){this})'))
+            .to.equal("with(MOCKDOWN_GLOBAL){#{src}}")
+
+        describe "handles oddly formatted stuff like", ->
+            it "tabs messing up offset positions"
+            it "carriage returns and other zero-space characters"
+            it "wide character offsets"
+
+
+
+
+
+
 
 
 
