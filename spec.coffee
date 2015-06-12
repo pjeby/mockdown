@@ -490,6 +490,129 @@ describe "mockdown.Environment(globals)", ->
 
 
 
+describe "mockdown.Example(opts)", ->
+
+    describe "gets properties from opts, including", ->
+
+        beforeEach -> @ex = new Example(
+            title: "Hello world"
+            code: 'console.log("Hello world!")'
+            output: 'Hello world!\n'
+            line: 42
+        )
+
+        it ".title"
+        it ".code"
+        it ".output"
+        it ".line"
+
+        describe ".opts that have normalized defaults", ->
+            it ".waitName = 'wait'"
+            it ".testName = 'test'"
+            it ".ellipsis = '...'"
+            it ".ignoreWhitespace = false"
+            it ".showOutput = true"
+            it ".showDiff = false"
+            it ".filename = '<anonymous>'"
+            it ".stackDepth = 0"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    describe "mismatch(output)", ->
+        it "returns an untrue value if output matches opts.output"
+        it "normalizes whitespace when opts.ignoreWhitespace"
+        it "treats opts.ellipsis as a wildcard when set"
+
+        describe "returns an error object for mismatches, that", ->
+            it "has .actual and .expected properties"
+            it "has actual.expected in .message if opts.showOutput"
+            it "has a true .showDiff if opts.showDiff"
+            it "has a stack that includes opts.filename:opts.line"
+            
+    describe "evaluate(env, params)", ->
+        it "runs opts.code in env"
+        it "makes params.wait available under opts.waitName, if set"
+        it "makes params.test available under opts.testName, if set"
+
+    describe "writeError(env, err)", ->
+        it "writes err.stack to env's console"
+        it "trims the stack to opts.stackDepth lines"
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    describe "runTest(env, testObj, done)", ->
+
+        it "makes a distinct wait() available under opts.waitName"
+        it "catches and records synchronous errors"
+        it "records async errors sent via wait()"
+        it "doesn't call done() until async result is finished"
+        it "only calls done() once"
+        it "sets testObj.callback to wait() (for Mocha timeouts)"
+
+        describe "suppresses errors that match expected output", ->
+            it "when thrown synchronously"
+            it "when sent asynchronously"
+
+        describe "sends mismatch errors to done", ->
+            describe "when no errors were expected", ->
+                it "at synchronous completion w/out error"
+                it "at asynchronous completion w/out error"
+            describe "when errors were expected", ->
+                it "at synchronous completion w/out error"
+                it "at asynchronous completion w/out error"
+                
+        describe "sends thrown/async errors to done()", ->
+            describe "when no errors were expected", ->
+                it "at synchronous completion w/error"
+                it "at asynchronous completion w/ error"
+            describe "when errors were expected", ->
+                it "at synchronous completion w/nonmatching error"
+                it "at asynchronous completion w/nonmatching error"
+                        
+        
+
+
+
+
+
+
+
+
+
+
+
 describe "mockdown.lex(src)", ->
 
     check = (src, out) -> lex(src).should.eql(out)
