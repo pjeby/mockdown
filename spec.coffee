@@ -533,6 +533,8 @@ describe "mockdown.Example(opts)", ->
 
     describe "mismatch(output)", ->
 
+        mismatch = (opts, output) -> new Example(opts).mismatch(output)
+
         it "returns an untrue value if output matches opts.output", ->
             expect(!!new Example(output:'x').mismatch('x')).to.be.false
 
@@ -570,28 +572,21 @@ describe "mockdown.Example(opts)", ->
 
 
 
-
-
         describe "returns an error object for mismatches, that", ->
 
             it "has .actual and .expected line-list properties", ->
-                err = new Example(output:'x\ny').mismatch('y\nz')
+                err = mismatch(output:'x\ny', 'y\nz')
                 expect(err.name).to.equal('Failed example')
                 expect(err).to.be.instanceOf(Error)
                 expect(err.actual).to.deep.equal ['y','z']
                 expect(err.expected).to.deep.equal ['x','y']
 
             it "has actual/expected in .message if opts.showOutput", ->
-                err = new Example(
-                    code:'foo()\nbar()', output:'a\nb', showOutput: no
-                ).mismatch('b\nc')
+                expect(mismatch(
+                    code:'foo()\nbar()', output:'a\nb', showOutput: no, 'b\nc'
+                ).message).to.equal('')
 
-                expect(err.message).to.equal('')
-
-                err = new Example(
-                    code:'foo()\nbar()', output:'a\nb'
-                ).mismatch('b\nc')
-
+                err = mismatch(code:'foo()\nbar()', output:'a\nb', 'b\nc')
                 expect(err.message.split('\n')).to.deep.equal [
                     '', 'Code:', '    foo()', '    bar()'
                     'Expected:', '>     a', '>     b'
@@ -599,10 +594,9 @@ describe "mockdown.Example(opts)", ->
                 ]
 
             it "has a true .showDiff if opts.showDiff", ->
-                err = new Example(output:'x\ny').mismatch('y\nz')
-                expect(err.showDiff).to.be.false
-                err = new Example(output:'x\ny', showDiff: yes).mismatch('y\nz')
-                expect(err.showDiff).to.be.true
+                expect(mismatch(output:'x\ny', 'y\nz').showDiff).to.be.false
+                expect(mismatch(output:'x\ny', showDiff: yes, 'y\nz').showDiff)
+                .to.be.true
 
             it "has a stack that includes opts.filename:opts.line", ->
                 err = new Example(
@@ -613,19 +607,30 @@ describe "mockdown.Example(opts)", ->
 
 
 
+
+
+
+
+
+
     describe "evaluate(env, params)", ->
+
+        evaluate = (opts, env=new Environment, params) ->
+            ex = new Example(opts)
+            if arguments.length>2
+                return ex.evaluate(env, params)
+            return ex.evaluate(env)
+
         it "runs opts.code in env, returning the result", ->
-            ex = new Example(code: 'foo')
-            env = new Environment(foo: 42)
-            expect(ex.evaluate(env)).to.equal(42)
+            expect(evaluate(code: 'foo', new Environment(foo: 42)))
+            .to.equal(42)
 
         it "uses the correct line numbers and filenames in stack traces", ->
-            ex = new Example(
-                code: '\n\nthrow new Error', line: 40
-                filename: 'throw-sample.js'
-            )
             try
-                ex.evaluate(new Environment)
+                evaluate(
+                    code: '\n\nthrow new Error', line: 40
+                    filename: 'throw-sample.js'
+                )
             catch e
                 s = e.stack.split('\n').slice(0, 2)
                 expect(s).to.deep.equal(['Error', '  at throw-sample.js:42:7'])
@@ -633,42 +638,37 @@ describe "mockdown.Example(opts)", ->
             throw new Error("Example didn't throw")
 
         it "makes params.wait available under opts.waitName, if set", ->
-            expect(
-                new Example(code:'wait').evaluate(new Environment, wait:42)
-            ).to.equal 42
-            expect(
-                new Example(code:'hold', waitName: 'hold')
-                .evaluate(new Environment, wait:42)
-            ).to.equal 42
+            expect(evaluate(code:'wait', null, wait:42)).to.equal 42
+            expect(evaluate(code:'hold', waitName: 'hold', null, wait:42))
+            .to.equal 42
 
 
         it "makes params.test available under opts.testName, if set", ->
-            expect(
-                new Example(code:'test').evaluate(new Environment, test:99)
+            expect(evaluate(code:'test', null, test:99)).to.equal 99
+            expect(evaluate(code:'example', testName: 'example', null, test:99)
             ).to.equal 99
-            expect(
-                new Example(code:'example', testName: 'example')
-                .evaluate(new Environment, test:99)
-            ).to.equal 99
+
+
+
 
 
 
 
     describe "writeError(env, err)", ->
 
+        getError = (stackDepth, err) ->
+            new Example({stackDepth}).writeError(env = new Environment, err)
+            return env.getOutput()
+
         it "writes err.stack to env's console", ->
-            new Example(stackDepth:Infinity).writeError(
-                env = new Environment, err = new Error("message")
-            )
-            expect(env.getOutput().split('\n'))
+            expect(getError(Infinity, err = new Error("message")).split('\n'))
             .to.deep.equal (err.stack+'\n').split('\n')
 
         it "trims the stack to opts.stackDepth lines", ->
-            new Example(stackDepth:1).writeError(
-                env = new Environment, err = new Error("message\n1\n2")
-            )
-            expect(env.getOutput().split('\n'))
+            expect(getError(1, err = new Error("message\n1\n2")).split('\n'))
             .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
+
+
 
 
 
@@ -697,38 +697,202 @@ describe "mockdown.Example(opts)", ->
 
     describe "runTest(env, testObj, done)", ->
 
-        it "makes a distinct wait() available under opts.waitName"
-        it "catches and records synchronous errors"
-        it "records async errors sent via wait()"
-        it "doesn't call done() until async result is finished"
-        it "only calls done() once"
-        it "sets testObj.callback to wait() (for Mocha timeouts)"
+        beforeEach ->
+            @env = new Environment
+            @gotOutput = spy.named 'getOutput', @env, 'getOutput'
+            @done = spy.named 'done'
+            @testOb = {}
+
+            @runTest = (@ex, @testOb={}, @done = spy.named 'done') ->
+                @evaled = spy.named 'evaluate', @ex, 'evaluate'
+                @checked = spy.named 'mismatch', @ex, 'mismatch'
+                @ex.runTest(@env, @testOb, @done)
+
+            @checkRanOnce = ->
+                expect(@evaled).to.have.been.calledOnce
+                expect(@evaled).to.have.been.calledWith(@env)
+                expect(@evaled).to.have.been.calledOn(@ex)
+                expect(@evaled.args[0][1].test).to.equal(@testOb)
+                expect(@gotOutput).to.have.been.calledOnce
+                expect(@gotOutput).to.have.been.calledAfter @evaled
+                expect(@checked).to.have.been.calledOnce
+                expect(@checked).to.have.been.calledAfter @gotOutput
+                expect(@checked).to.have.been.calledWithExactly(
+                    @gotOutput.returnValues[0]
+                )
+
+            @checkDone = (err) ->
+                @checkRanOnce()
+                expect(@done).to.have.been.calledOnce
+                expect(@done).to.have.been.calledWithExactly(err)
+                expect(@done).to.have.been.calledOn(null)
+
+        it "sets testObj.callback to complete the example (for Mocha timeouts)", ->
+            ex = new Example(code: 'done = wait(); undefined', output:'')
+            @runTest(ex)
+            expect(@done).to.not.have.been.called
+            expect(@testOb.callback).to.equal(done = @env.context.done)
+
+
+
+
+        it "calls done() after running synchronous code", ->
+            ex = new Example(code: '42', output:'42\n')
+            @runTest(ex); @checkDone()
+            expect(@checked).to.have.been.calledWithExactly('42\n')
+
+        it "makes a distinct wait() available under opts.waitName", ->
+            @runTest new Example(code: 'waitFn = wait; undefined', output:'')
+            expect_fn(@env.context.waitFn)
+            @runTest new Example(
+                code: 'holdFn = hold; undefined', output:'', waitName:'hold'
+            )
+            expect_fn(@env.context.holdFn)
+
+        it "doesn't call done() until async result is finished", ->
+            ex = new Example(code: 'done = wait(); undefined', output:'')
+            @runTest(ex)
+            expect(@done).to.not.have.been.called
+            @env.context.done()
+            @checkDone()
+
+        describe "only calls done() w/success once", ->
+
+            it "when called synchronously", ->
+                ex = new Example(code: 'done = wait(); done(); undefined', output:'')
+                @runTest(ex)
+                @env.context.done()
+                @checkDone()
+
+            it "when called asynchronously", ->
+                ex = new Example(code: 'done = wait(); undefined', output:'')
+                @runTest(ex)
+                expect(@done).to.not.have.been.called
+                @env.context.done()
+                @env.context.done()
+                @checkDone()
+
+
+
+
+
+
+        it "forwards even late errors to done()", ->
+            ex = new Example(code: 'done = wait(); undefined', output:'')
+            @runTest(ex)
+            expect(@done).to.not.have.been.called
+            @env.context.done()
+            @checkDone()
+            @env.context.done(err=new Error)
+            expect(@done).to.have.been.calledTwice
+            expect(@done).to.have.been.calledWith(err)
+            @checkRanOnce()
+
+        it "records synchronous errors when waiting for async results", ->
+                @runTest new Example(
+                    code: 'done = wait(); throw new TypeError("bar")'
+                    output: 'TypeError: bar\n'
+                )
+                expect(@done).to.not.have.been.called
+                @env.context.done()
+                @checkDone()
+
 
         describe "suppresses errors that match expected output", ->
-            it "when thrown synchronously"
-            it "when sent asynchronously"
+
+            it "when thrown synchronously", ->
+                @runTest new Example(
+                    code: 'throw new TypeError("foo")'
+                    output: 'TypeError: foo\n'
+                )
+                @checkDone()
+
+            it "when sent asynchronously", ->
+                @runTest new Example(
+                    code: 'done = wait(); undefined', output: 'TypeError: foo\n'
+                )
+                expect(@done).to.not.have.been.called
+                @env.context.done(new TypeError('foo'))
+                @checkDone()
+
+
+
 
         describe "sends mismatch errors to done", ->
+
+            beforeEach ->
+                @checkDone = ->
+                    @checkRanOnce()
+                    expect(@done).to.have.been.calledOnce
+                    expect(@done).to.have.been.calledWithExactly(
+                        err = @checked.returnValues[0]
+                    )
+                    expect(@done).to.have.been.calledOn(null)
+                    expect(err).to.be.instanceOf(Error)
+                    expect(err.name).to.equal('Failed example')
+
             describe "when no errors were expected", ->
-                it "at synchronous completion w/out error"
-                it "at asynchronous completion w/out error"
+
+                it "at synchronous completion w/out error", ->
+                    @runTest new Example(code: '42', output: '43\n')
+                    @checkDone()
+
+                it "at asynchronous completion w/out error", ->
+                    @runTest new Example(
+                        code: 'done = wait(); 42', output: '43\n'
+                    )
+                    expect(@done).to.not.have.been.called
+                    @env.context.done()
+                    @checkDone()
+
             describe "when errors were expected", ->
-                it "at synchronous completion w/out error"
-                it "at asynchronous completion w/out error"
+
+                it "at synchronous completion w/out error", ->
+                    @runTest new Example(code: '42', output: 'Error: foo\n')
+                    @checkDone()
+
+                it "at asynchronous completion w/out error", ->
+                    @runTest new Example(
+                        code: 'done = wait(); 42', output: 'Error: foo\n'
+                    )
+                    expect(@done).to.not.have.been.called
+                    @env.context.done()
+                    @checkDone()
 
         describe "sends thrown/async errors to done()", ->
+
             describe "when no errors were expected", ->
-                it "at synchronous completion w/error"
-                it "at asynchronous completion w/ error"
+                it "at synchronous completion w/error", ->
+                    myErr = @env.context.myErr = new Error()
+                    @runTest new Example(code: 'throw myErr', output:'42\n')
+                    @checkDone(myErr)
+
+                it "at asynchronous completion w/ error", ->
+                    ex = new Example(code: 'done = wait(); undefined', output:'')
+                    @runTest(ex)
+                    expect(@done).to.not.have.been.called
+                    @env.context.done(err = new Error())
+                    @checkDone(err)
+
             describe "when errors were expected", ->
-                it "at synchronous completion w/nonmatching error"
-                it "at asynchronous completion w/nonmatching error"
+                it "at synchronous completion w/nonmatching error", ->
+                    @runTest new Example(
+                        code: 'throw err = new TypeError("foo")'
+                        output: 'TypeError: bar\n'
+                    )
+                    @checkDone(err = @env.context.err)
+                    expect(err).to.be.instanceOf(TypeError)
+                    expect(err.message).to.equal 'foo'
 
-
-
-
-
-
+                it "at asynchronous completion w/nonmatching error", ->
+                    @runTest new Example(
+                        code: 'done=wait(); undefined'
+                        output: 'TypeError: bar\n'
+                    )
+                    @env.context.done(err = new TypeError('foo'))
+                    @checkDone(err)
+                    expect(err).to.be.instanceOf(TypeError)
+                    expect(err.message).to.equal 'foo'
 
 
 

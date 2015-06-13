@@ -121,6 +121,47 @@ assigning to an object that inherits from the global context, as with the
             err.stack = stack.join('\n')
             return err
 
+        runTest: (env, testObj, done) ->
+
+            finished = no
+
+            waiter = new mockdown.Waiter (err) =>
+                if finished
+                    done(err) if err
+                else
+                    finished = yes
+                    @writeError(env, err) if err
+                    matchErr = @mismatch(env.getOutput())
+
+                    if not matchErr
+                        done.call(null, undefined)
+                    else if not err?
+                        done.call(null, matchErr)
+                    else
+                        done.call(null, err)
+
+            testObj.callback = waiter.done
+
+            try
+                @evaluate(env, wait: waiter.wait, test: testObj)
+                waiter.done() unless waiter.waiting
+            catch e
+                if waiter.waiting
+                    @writeError(env, e)
+                else waiter.done(e)
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### Environment Objects
 
 An environment is like a stripped-down node REPL that runs code samples in
