@@ -39,6 +39,88 @@ assigning to an object that inherits from the global context, as with the
 
 
 
+### Defaults
+
+    DEFAULT_OPTS = {
+        waitName: 'wait'
+        testName: 'test'
+        ellipsis: '...'
+        ignoreWhitespace: no
+        showOutput: yes
+        showDiff: no
+        filename: '<anonymous>'
+        stackDepth: 0
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Example Objects
+
+    class mockdown.Example
+        constructor: (opts) ->
+            @title = opts?.title
+            @code = opts?.code
+            @line = opts?.line ? 1
+            @output = opts?.output
+            @opts = assign {}, DEFAULT_OPTS, opts
+
+        evaluate: (env, params) ->
+            if params
+                for k in Object.keys(params) when name = @opts[k+"Name"]
+                    env.context[name] = params[k]
+            return env.run(Array(@line).join('\n') + @code, @opts)
+
+        writeError:(env, err) ->
+            msgLines = err.message.split('\n').length
+            stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
+            env.context.console.error(stack.join('\n'))
+
+        mismatch: (output) ->
+            return if output is @output
+            msg = ['']
+            if @opts.showOutput
+                msg.push 'Code:'
+                msg.push '    '+l for l in (@code ? '').split('\n')
+                msg.push 'Expected:'
+                msg.push '>     '+l for l in expected = @output.split('\n')
+                msg.push 'Got:'
+                msg.push '>     '+l for l in actual = output.split('\n')
+            err = new Error(msg.join('\n'))
+            err.name = 'Failed example'
+            err.showDiff = @opts.showDiff
+            err.expected = expected
+            err.actual = actual
+            stack = err.stack.split('\n')
+            stack.splice(msg.length, 0, "  at Example (#{@opts.filename}:#{@line})")
+            err.stack = stack.join('\n')
+            return err
+
 ### Environment Objects
 
 An environment is like a stripped-down node REPL that runs code samples in
@@ -234,7 +316,7 @@ our context when it executes.  (It's not needed after that.)
             current_global = global
             current_global.MOCKDOWN_GLOBAL = @context
             try
-                res = script.runInThisContext()
+                res = script.runInThisContext(displayErrors: false)
             finally
                 delete current_global.MOCKDOWN_GLOBAL
 

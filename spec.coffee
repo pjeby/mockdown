@@ -15,7 +15,7 @@ failSafe = (done, fn) -> ->
     catch e then done(e)
 
 {lex, Section, Example, Environment, Document, Waiter} = require './'
-
+util = require 'util'
 
 
 
@@ -495,35 +495,35 @@ describe "mockdown.Example(opts)", ->
     describe "gets properties from opts, including", ->
 
         beforeEach -> @ex = new Example(
-            title: "Hello world"
-            code: 'console.log("Hello world!")'
-            output: 'Hello world!\n'
-            line: 42
+            title: @title = "Hello world"
+            code: @code = 'console.log("Hello world!")'
+            output: @output = 'Hello world!\n'
+            line: @line = 42
         )
 
-        it ".title"
-        it ".code"
-        it ".output"
-        it ".line"
+        it ".title",  -> expect(@ex.title) .to.equal(@title)
+        it ".code",   -> expect(@ex.code)  .to.equal(@code)
+        it ".output", -> expect(@ex.output).to.equal(@output)
+        it ".line",   -> expect(@ex.line) .to.equal(@line)
 
-        describe ".opts that have normalized defaults", ->
-            it ".waitName = 'wait'"
-            it ".testName = 'test'"
-            it ".ellipsis = '...'"
-            it ".ignoreWhitespace = false"
-            it ".showOutput = true"
-            it ".showDiff = false"
-            it ".filename = '<anonymous>'"
-            it ".stackDepth = 0"
-
-
-
-
-
-
-
-
-
+        describe "normalized defaults in .opts", ->
+            for k, [dflt, alt] of {
+                waitName: ['wait', null]
+                testName: ['test', null]
+                ellipsis: ['...', null]
+                ignoreWhitespace: [no, yes]
+                showOutput: [yes, no]
+                showDiff: [no, yes]
+                filename: ['<anonymous>', 'helloWorld.js']
+                stackDepth: [0, 2]
+            } then do (k, dflt, alt) ->
+                describe ".#{k} = #{util.inspect(dflt)}", ->
+                    it "when overwritten", ->
+                        expect(new Example("#{k}": alt).opts[k]).to.equal(alt)
+                    it "when unsupplied", ->
+                        expect(new Example({}).opts[k]).to.equal(dflt)
+                    it "when no options given", ->
+                        expect(new Example().opts[k]).to.equal(dflt)
 
 
 
@@ -532,25 +532,148 @@ describe "mockdown.Example(opts)", ->
 
 
     describe "mismatch(output)", ->
-        it "returns an untrue value if output matches opts.output"
+
+        it "returns an untrue value if output matches opts.output", ->
+            expect(!!new Example(output:'x').mismatch('x')).to.be.false
+
         it "normalizes whitespace when opts.ignoreWhitespace"
         it "treats opts.ellipsis as a wildcard when set"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         describe "returns an error object for mismatches, that", ->
-            it "has .actual and .expected properties"
-            it "has actual.expected in .message if opts.showOutput"
-            it "has a true .showDiff if opts.showDiff"
-            it "has a stack that includes opts.filename:opts.line"
-            
+
+            it "has .actual and .expected line-list properties", ->
+                err = new Example(output:'x\ny').mismatch('y\nz')
+                expect(err.name).to.equal('Failed example')
+                expect(err).to.be.instanceOf(Error)
+                expect(err.actual).to.deep.equal ['y','z']
+                expect(err.expected).to.deep.equal ['x','y']
+
+            it "has actual/expected in .message if opts.showOutput", ->
+                err = new Example(
+                    code:'foo()\nbar()', output:'a\nb', showOutput: no
+                ).mismatch('b\nc')
+
+                expect(err.message).to.equal('')
+
+                err = new Example(
+                    code:'foo()\nbar()', output:'a\nb'
+                ).mismatch('b\nc')
+
+                expect(err.message.split('\n')).to.deep.equal [
+                    '', 'Code:', '    foo()', '    bar()'
+                    'Expected:', '>     a', '>     b'
+                    'Got:',      '>     b', '>     c'
+                ]
+
+            it "has a true .showDiff if opts.showDiff", ->
+                err = new Example(output:'x\ny').mismatch('y\nz')
+                expect(err.showDiff).to.be.false
+                err = new Example(output:'x\ny', showDiff: yes).mismatch('y\nz')
+                expect(err.showDiff).to.be.true
+
+            it "has a stack that includes opts.filename:opts.line", ->
+                err = new Example(
+                    output:'x\ny', line:55, filename:'foo.md', showOutput:no
+                ).mismatch('y\nz')
+                expect(err.stack.split('\n')[1])
+                .to.equal "  at Example (foo.md:55)"
+
+
+
     describe "evaluate(env, params)", ->
-        it "runs opts.code in env"
-        it "makes params.wait available under opts.waitName, if set"
-        it "makes params.test available under opts.testName, if set"
+        it "runs opts.code in env, returning the result", ->
+            ex = new Example(code: 'foo')
+            env = new Environment(foo: 42)
+            expect(ex.evaluate(env)).to.equal(42)
+
+        it "uses the correct line numbers and filenames in stack traces", ->
+            ex = new Example(
+                code: '\n\nthrow new Error', line: 40
+                filename: 'throw-sample.js'
+            )
+            try
+                ex.evaluate(new Environment)
+            catch e
+                s = e.stack.split('\n').slice(0, 2)
+                expect(s).to.deep.equal(['Error', '  at throw-sample.js:42:7'])
+                return
+            throw new Error("Example didn't throw")
+
+        it "makes params.wait available under opts.waitName, if set", ->
+            expect(
+                new Example(code:'wait').evaluate(new Environment, wait:42)
+            ).to.equal 42
+            expect(
+                new Example(code:'hold', waitName: 'hold')
+                .evaluate(new Environment, wait:42)
+            ).to.equal 42
+
+
+        it "makes params.test available under opts.testName, if set", ->
+            expect(
+                new Example(code:'test').evaluate(new Environment, test:99)
+            ).to.equal 99
+            expect(
+                new Example(code:'example', testName: 'example')
+                .evaluate(new Environment, test:99)
+            ).to.equal 99
+
+
+
 
     describe "writeError(env, err)", ->
-        it "writes err.stack to env's console"
-        it "trims the stack to opts.stackDepth lines"
-        
+
+        it "writes err.stack to env's console", ->
+            new Example(stackDepth:Infinity).writeError(
+                env = new Environment, err = new Error("message")
+            )
+            expect(env.getOutput().split('\n'))
+            .to.deep.equal (err.stack+'\n').split('\n')
+
+        it "trims the stack to opts.stackDepth lines", ->
+            new Example(stackDepth:1).writeError(
+                env = new Environment, err = new Error("message\n1\n2")
+            )
+            expect(env.getOutput().split('\n'))
+            .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
+
+
+
+
+
 
 
 
@@ -592,7 +715,7 @@ describe "mockdown.Example(opts)", ->
             describe "when errors were expected", ->
                 it "at synchronous completion w/out error"
                 it "at asynchronous completion w/out error"
-                
+
         describe "sends thrown/async errors to done()", ->
             describe "when no errors were expected", ->
                 it "at synchronous completion w/error"
@@ -600,8 +723,8 @@ describe "mockdown.Example(opts)", ->
             describe "when errors were expected", ->
                 it "at synchronous completion w/nonmatching error"
                 it "at asynchronous completion w/nonmatching error"
-                        
-        
+
+
 
 
 
