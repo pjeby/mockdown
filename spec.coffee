@@ -328,40 +328,40 @@ describe "mockdown.Environment(globals)", ->
 
         describe "prevents global assignment via", ->
 
-            afterEach -> expect(typeof foobly).to.equal "undefined"
+            check = (title, code, result, strict=yes) -> it title, ->
+                expect(@env.run(code)).to.equal(result)
+                if strict
+                    expect(global.hasOwnProperty("foo#{result}")).to.be.false
+                else
+                    expect(typeof global["foo#{result}"]).to.equal 'undefined'
 
-            it "simple assignment", -> expect(@env.run('foobly=1')).to.equal(1)
+            check "simple assignment", 'foo1=1', 1
+            check "var declaration", 'var q, foo2=2; foo2', 2, false
+            check "nested assignment", 'function q(){ return foo3=3;}; q()', 3
 
-            it "var declaration", -> expect(@env.run(
-                'var q, foobly=2; foobly'
-            )).to.equal(2)
+            check "function declaration",
+                'function foo4() { return 4; }; foo4()', 4
 
-            it "nested assignment", -> expect(@env.run(
-                'function q(){ return foobly=3;}; q()'
-            )).to.equal(3)
+            check "conditional declaration",
+                'if (1) function foo5() { return 5; }; foo5()', 5
 
-            it "function declaration", -> expect(@env.run(
-                'function foobly() { return 4; }; foobly()'
-            )).to.equal(4)
+            check "strict mode assignment",
+                'function x() { "use strict"; foo6=6; }; x(); foo6', 6
 
-            it "conditional declaration", -> expect(@env.run(
-                'if (1) function foobly() { return 5; }; foobly()'
-            )).to.equal(5)
+            check "global.property assignment",
+                'global.foo7 = 7; foo7', 7
 
-            it "strict mode assignment", -> expect(@env.run(
-                'function x() { "use strict"; foobly=6; }; x(); foobly'
-            )).to.equal(6)
+            check "`this` assignment", 'this.foo8 = 8; foo8', 8
 
-            it "global.property assignment", -> expect(@env.run(
-                'global.foobly = 7; foobly'
-            )).to.equal(7)
+            check "for loops", 'for (foo9=0; foo9<9; foo9++) {}; foo9', 9
 
-            it "`this` assignment", ->
-                expect(@env.run('this.foobly = 8; foobly')).to.equal(8)
+            check "for-var loops",
+                'for (var foo10=0; foo10<10; foo10++) {}; foo10', 10, false
 
+            check "for-in loops", 'for (fooX in {X:1}) {}; fooX', 'X'
 
-
-
+            check "for var-in loops",
+                'for (var fooY in {Y:1}) {}; fooY', 'Y', false
 
 
 

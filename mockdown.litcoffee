@@ -266,8 +266,7 @@ add dummy globals for already-existing context or global variables.
             funcs = []
 
             recast.visit recast.parse(src),
-
-                visitAssignmentExpression: (p) ->
+                visitAssignmentExpression: vae = (p) ->
                     @traverse(p)
                     target = p.node.left
                     return unless target.type is 'Identifier'
@@ -277,6 +276,7 @@ add dummy globals for already-existing context or global variables.
                     if not s? or s.isGlobal
                         globals[name] = undefined
                     return
+                visitForInStatement: vae
 
                 visitFunctionDeclaration: (p) ->
                     name = p.node.id.name
