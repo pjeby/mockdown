@@ -531,7 +531,7 @@ describe "mockdown.Example(opts)", ->
 
 
 
-    describe "mismatch(output)", ->
+    describe ".mismatch(output)", ->
 
         mismatch = (opts, output) -> new Example(opts).mismatch(output)
 
@@ -613,7 +613,7 @@ describe "mockdown.Example(opts)", ->
 
 
 
-    describe "evaluate(env, params)", ->
+    describe ".evaluate(env, params)", ->
 
         evaluate = (opts, env=new Environment, params) ->
             ex = new Example(opts)
@@ -654,7 +654,7 @@ describe "mockdown.Example(opts)", ->
 
 
 
-    describe "writeError(env, err)", ->
+    describe ".writeError(env, err)", ->
 
         getError = (stackDepth, err) ->
             new Example({stackDepth}).writeError(env = new Environment, err)
@@ -695,7 +695,7 @@ describe "mockdown.Example(opts)", ->
 
 
 
-    describe "runTest(env, testObj, done)", ->
+    describe ".runTest(env, testObj, done)", ->
 
         beforeEach ->
             @env = new Environment
@@ -893,6 +893,88 @@ describe "mockdown.Example(opts)", ->
                     @checkDone(err)
                     expect(err).to.be.instanceOf(TypeError)
                     expect(err.message).to.equal 'foo'
+
+
+
+
+
+
+
+    describe ".onAdd(container)", ->
+        it "sets .seq based on its position in container and returns itself"
+
+    describe ".getTitle()", ->
+        it "returns .title if set"
+        it "returns a default title of 'Example'"
+        it "returns 'Example N' where N is its position in a container"
+        describe "extracts a title from a first code line comment", ->
+            for cmt in ['//', '#', '--','%'] then it "using #{cmt}"
+
+    describe ".register(suiteFn, testFn, env)", ->
+        it "invokes testFn w/.getTitle() and a callback that runs .runTest()"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+specifyContainer = ->
+
+    describe ".add(child)", ->
+        it "appends child.onAdd(this) to .children"
+        it "returns this"
+
+    describe ".registerChildren(suiteFn, testFn, env)", ->
+        it "invokes child.register(...) for each child in .children"
+        it "returns this"
+
+describe "mockdown.Section(title)", ->
+    it "sets .title from the given title"
+
+    specifyContainer()
+
+    describe ".onAdd(container)", ->
+        it "returns this"
+        describe "when it contains a single example", ->
+            it "returns example.onAdd(container) in place of itself"
+            it "sets the example's title if not already set"
+
+    describe ".register(suiteFn, testFn, env)", ->
+
+describe "mockdown.Document(opts)", ->
+    it "sets .opts from the given opts"
+
+    specifyContainer()
+
+    describe ".register(suiteFn, testFn)", ->
+        it "passes along an optional env to .registerChildren()"
+        it "creates an env using .opts.globals"
+
+
+
 
 
 
