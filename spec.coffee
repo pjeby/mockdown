@@ -668,32 +668,32 @@ describe "mockdown.Example(opts)", ->
             expect(getError(1, err = new Error("message\n1\n2")).split('\n'))
             .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
 
+    describe ".getTitle()", ->
 
+        it "returns .title if set", ->
+            ex = new Example title: 'A Title'
+            expect(ex.getTitle()).to.equal 'A Title'
 
+        it "returns a default title of 'Example'", ->
+            ex = new Example
+            expect(ex.getTitle()).to.equal 'Example'
 
+        it "returns 'Example N' where N is its position in a container", ->
+            (ex = new Example).onAdd(children: [])
+            expect(ex.getTitle()).to.equal 'Example 1'
+            ex.onAdd(children: [42])
+            expect(ex.getTitle()).to.equal 'Example 2'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        describe "extracts a title from a first code line comment", ->
+            for cmt in ['//', '#', '--','%'] then it "using #{cmt}", ->
+                ex = new Example code: """\
+                    #{cmt} An example using #{cmt} as a delimiter """
+                expect(ex.getTitle()).to.equal(
+                    "An example using #{cmt} as a delimiter"
+                )
+                ex = new Example code: """\
+                    Not! #{cmt} An example using #{cmt} as a delimiter"""
+                expect(ex.getTitle()).to.equal("Example")
 
     describe ".runTest(env, testObj, done)", ->
 
@@ -901,14 +901,14 @@ describe "mockdown.Example(opts)", ->
 
 
     describe ".onAdd(container)", ->
-        it "sets .seq based on its position in container and returns itself"
 
-    describe ".getTitle()", ->
-        it "returns .title if set"
-        it "returns a default title of 'Example'"
-        it "returns 'Example N' where N is its position in a container"
-        describe "extracts a title from a first code line comment", ->
-            for cmt in ['//', '#', '--','%'] then it "using #{cmt}"
+        it "sets .seq based on its position in container and returns itself", ->
+            ex = new Example()
+            expect(ex.seq).to.not.exist
+
+            c = children: [42, 54]
+            expect(ex.onAdd(c)).to.equal ex
+            expect(ex.seq).to.equal 3
 
     describe ".register(suiteFn, testFn, env)", ->
         it "invokes testFn w/.getTitle() and a callback that runs .runTest()"
@@ -944,34 +944,116 @@ describe "mockdown.Example(opts)", ->
 specifyContainer = ->
 
     describe ".add(child)", ->
-        it "appends child.onAdd(this) to .children"
-        it "returns this"
+
+        it "appends child.onAdd(this) to .children", ->
+            expect(@c.children).to.deep.equal []
+            @c.add(onAdd: s1 = spy.named 's1', -> 41)
+            expect(s1).to.have.been.calledWithExactly(@c)
+            @c.add(onAdd: s2 = spy.named 's2', -> 42)
+            expect(s2).to.have.been.calledWithExactly(@c)
+            @c.add(onAdd: s3 = spy.named 's3', -> 43)
+            expect(s3).to.have.been.calledWithExactly(@c)
+            expect(@c.children).to.deep.equal [41, 42, 43]
+
+        it "returns this", ->
+            expect(@c.add({onAdd:->this})).to.equal @c
 
     describe ".registerChildren(suiteFn, testFn, env)", ->
-        it "invokes child.register(...) for each child in .children"
-        it "returns this"
+
+        beforeEach ->
+            @env = new Environment
+            @c.add(onAdd: (-> this), register: @s1 = spy.named 's1')
+            @c.add(onAdd: (-> this), register: @s2 = spy.named 's2')
+            @c.add(onAdd: (-> this), register: @s3 = spy.named 's3')
+
+        it "invokes child.register(...) for each child in .children", ->
+            @c.registerChildren((s = ->), (t = ->), @env)
+            expect(@s1).to.have.been.calledWithExactly(s, t, @env)
+            expect(@s2).to.have.been.calledWithExactly(s, t, @env)
+            expect(@s3).to.have.been.calledWithExactly(s, t, @env)
+            expect(@s2).to.have.been.calledAfter @s1
+            expect(@s3).to.have.been.calledAfter @s2
+
+        it "returns this", ->
+            expect(@c.registerChildren((->), (->), @env)).to.equal @c
+
+
+
+
+
 
 describe "mockdown.Section(title)", ->
-    it "sets .title from the given title"
+
+    beforeEach -> @c = new Section("Section A")
+
+    it "sets .title from the given title", ->
+        expect(@c.title).to.equal('Section A')
 
     specifyContainer()
 
     describe ".onAdd(container)", ->
-        it "returns this"
-        describe "when it contains a single example", ->
-            it "returns example.onAdd(container) in place of itself"
-            it "sets the example's title if not already set"
+
+        it "returns this", ->
+            @c.add(onAdd: -> this)
+            expect(@c.onAdd(container = {})).to.equal @c
+
+        describe "when it contains a single Example instance", ->
+            beforeEach ->
+                @c.add(@ex = new Example)
+                @s1 = spy.named 'onAdd', @ex, 'onAdd'
+
+            it "returns example.onAdd(container) in place of itself", ->
+                expect(@c.onAdd(container = {children: []})).to.equal @ex
+                expect(@s1).to.have.been.calledWithExactly(container)
+
+            it "sets the example's title if not already set", ->
+                @c.onAdd(container = {children: []})
+                expect(@ex.title).to.equal 'Section A'
+
+            it "leaves the title alone if already set", ->
+                @ex.title = 'First Example'
+                @c.onAdd(container = {children: []})
+                expect(@ex.title).to.equal 'First Example'
 
     describe ".register(suiteFn, testFn, env)", ->
+        it "calls suiteFn(.title, callback to .registerChildren)"
+
+
+
+
+
 
 describe "mockdown.Document(opts)", ->
-    it "sets .opts from the given opts"
+
+    beforeEach -> @c = new Document(@opts = {})
+
+    it "sets .opts from the given opts", ->
+        expect(@c.opts).to.equal @opts
 
     specifyContainer()
 
     describe ".register(suiteFn, testFn)", ->
         it "passes along an optional env to .registerChildren()"
         it "creates an env using .opts.globals"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

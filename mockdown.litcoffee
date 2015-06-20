@@ -80,15 +80,75 @@ assigning to an object that inherits from the global context, as with the
 
 
 
+## Containers
+
+    class Container
+
+        constructor: -> @children = []
+
+        add: (child) ->
+            @children.push child.onAdd(this)
+            this
+
+        registerChildren: (suiteFn, testFn, env) ->
+            for child in @children then child.register(suiteFn, testFn, env)
+            this
+
+### Document Objects
+
+    class mockdown.Document extends Container
+
+        constructor: (@opts) -> super
+
+### Section Objects
+
+    class mockdown.Section extends Container
+
+        constructor: (@title) -> super
+
+        onAdd: (container) ->
+            if @children.length==1 and
+             (child = @children[0]) instanceof mockdown.Example
+                child.title ?= @title
+                child.onAdd(container)
+            else
+                this
+
+
+
+
+
+
+
+
+## Running Examples
+
 ### Example Objects
 
     class mockdown.Example
+
         constructor: (opts) ->
             @title = opts?.title
             @code = opts?.code
             @line = opts?.line ? 1
             @output = opts?.output
             @opts = assign {}, DEFAULT_OPTS, opts
+            @seq = undefined
+
+        onAdd: (container) ->
+            @seq = container.children.length + 1
+            this
+
+        getTitle: ->
+            return @title if @title?
+            return m[2].trim() if m = @code?.match ///
+                ^
+                \s*
+                (//|#|--|%)
+                \s*
+                ([^\n]+)
+            ///
+            if @seq then "Example "+@seq else "Example"
 
         evaluate: (env, params) ->
             if params
@@ -100,6 +160,7 @@ assigning to an object that inherits from the global context, as with the
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
+
 
         mismatch: (output) ->
             return if output is @output
@@ -149,6 +210,27 @@ assigning to an object that inherits from the global context, as with the
                 if waiter.waiting
                     @writeError(env, e)
                 else waiter.done(e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
