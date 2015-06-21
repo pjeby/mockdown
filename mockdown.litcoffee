@@ -99,6 +99,8 @@ assigning to an object that inherits from the global context, as with the
     class mockdown.Document extends Container
 
         constructor: (@opts) -> super
+        register: (suite, test, env = new mockdown.Environment @opts.globals) ->
+            @registerChildren(suite, test, env)
 
 ### Section Objects
 
@@ -114,10 +116,8 @@ assigning to an object that inherits from the global context, as with the
             else
                 this
 
-
-
-
-
+        register: (suiteFn, testFn, env) -> suiteFn @title, =>
+            @registerChildren(suiteFn, testFn, env)
 
 
 
@@ -138,6 +138,10 @@ assigning to an object that inherits from the global context, as with the
         onAdd: (container) ->
             @seq = container.children.length + 1
             this
+
+        register: (suiteFn, testFn, env) ->
+            my = this
+            testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
 
         getTitle: ->
             return @title if @title?

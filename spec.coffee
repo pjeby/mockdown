@@ -911,35 +911,35 @@ describe "mockdown.Example(opts)", ->
             expect(ex.seq).to.equal 3
 
     describe ".register(suiteFn, testFn, env)", ->
-        it "invokes testFn w/.getTitle() and a callback that runs .runTest()"
 
+        it "invokes testFn w/.getTitle() and a callback that runs .runTest()", (done) ->
 
+            ex = new Example(title: 'foo', code: '42', output: '42\n')
+            env = new Environment()
+            gts = spy.named 'getTitle', ex, 'getTitle'
+            rts = spy.named 'runTest', ex, 'runTest'
+            testCb = spy.named 'done'
 
+            suiteFn = -> done new Error("shouldn't have called suiteFn")
 
+            testFn = spy.named 'testFn', (title, cb) ->
+                expect(typeof cb).to.equal 'function'
+                expect(cb.length).to.equal 1
+                expect(rts).to.not.have.been.called
+                expect(gts).to.have.been.calledOnce
+                expect(title).to.equal gts.returnValues[0]
+                testOb = {}
+                ctx = runnable: -> testOb
 
+                cb.call(ctx, testCb)
+                expect(rts).to.have.been.calledOnce
+                expect(rts).to.have.been.calledWithExactly(env, testOb, testCb)
+                expect(testCb).to.have.been.calledOnce
+                expect(testCb).to.have.been.calledWithExactly(undefined)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            ex.register(suiteFn, testFn, env)
+            expect(testFn).to.have.been.calledOnce
+            done()
 
 specifyContainer = ->
 
@@ -1015,8 +1015,49 @@ describe "mockdown.Section(title)", ->
                 @c.onAdd(container = {children: []})
                 expect(@ex.title).to.equal 'First Example'
 
+
+
+
+
+
+
+
+
     describe ".register(suiteFn, testFn, env)", ->
-        it "calls suiteFn(.title, callback to .registerChildren)"
+
+        it "calls suiteFn(.title, callback to .registerChildren)", (done) ->
+
+            env = new Environment()
+            rc = spy.named 'registerChildren', @c, 'registerChildren'
+
+            suiteFn = spy.named 'suiteFn', (title, cb) =>
+                expect(typeof cb).to.equal 'function'
+                expect(cb.length).to.equal 0
+                expect(rc).to.not.have.been.called
+                expect(title).to.equal @c.title
+                cb()
+                expect(rc).to.have.been.calledOnce
+                expect(rc).to.have.been.calledWithExactly(suiteFn, testFn, env)
+
+            testFn = -> done new Error("shouldn't have called suiteFn")
+            @c.register(suiteFn, testFn, env)
+            expect(suiteFn).to.have.been.calledOnce
+            done()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1025,7 +1066,7 @@ describe "mockdown.Section(title)", ->
 
 describe "mockdown.Document(opts)", ->
 
-    beforeEach -> @c = new Document(@opts = {})
+    beforeEach -> @c = new Document(@opts = globals: foo: 'bar')
 
     it "sets .opts from the given opts", ->
         expect(@c.opts).to.equal @opts
@@ -1033,30 +1074,30 @@ describe "mockdown.Document(opts)", ->
     specifyContainer()
 
     describe ".register(suiteFn, testFn)", ->
-        it "passes along an optional env to .registerChildren()"
-        it "creates an env using .opts.globals"
 
+        it "passes along an optional env to .registerChildren()", ->
+            env = new Environment
+            rc = spy.named 'registerChildren', @c, 'registerChildren'
+            sf = spy.named 'suiteFn'
+            tf = spy.named 'testFn'
+            @c.register(sf, tf, env)
+            expect(sf).to.not.have.been.called
+            expect(tf).to.not.have.been.called
+            expect(rc).to.have.been.calledOnce
+            expect(rc).to.have.been.calledWithExactly(sf, tf, env)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        it "creates an env using .opts.globals", ->
+            rc = spy.named 'registerChildren', @c, 'registerChildren'
+            sf = spy.named 'suiteFn'
+            tf = spy.named 'testFn'
+            @c.register(sf, tf)
+            expect(sf).to.not.have.been.called
+            expect(tf).to.not.have.been.called
+            expect(rc).to.have.been.calledOnce
+            env = rc.args[0][2]
+            expect(rc).to.have.been.calledWithExactly(sf, tf, env)
+            expect(env).to.be.an.instanceOf(Environment)
+            expect(env.context.foo).to.exist.and.equal 'bar'
 
 
 
