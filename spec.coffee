@@ -490,6 +490,26 @@ describe "mockdown.Environment(globals)", ->
 
 
 
+checkDefaults = (cls) ->
+    for k, [dflt, alt] of {
+        waitName: ['wait', null]
+        testName: ['test', null]
+        ellipsis: ['...', null]
+        ignoreWhitespace: [no, yes]
+        showOutput: [yes, no]
+        showDiff: [no, yes]
+        filename: ['<anonymous>', 'helloWorld.js']
+        stackDepth: [0, 2]
+    } then do (k, dflt, alt) ->
+        describe ".#{k} = #{util.inspect(dflt)}", ->
+            it "when overwritten", ->
+                expect(new cls("#{k}": alt).opts[k]).to.equal(alt)
+            it "when unsupplied", ->
+                expect(new cls({}).opts[k]).to.equal(dflt)
+            it "when no options given", ->
+                expect(new cls().opts[k]).to.equal(dflt)
+
+
 describe "mockdown.Example(opts)", ->
 
     describe "gets properties from opts, including", ->
@@ -506,27 +526,7 @@ describe "mockdown.Example(opts)", ->
         it ".output", -> expect(@ex.output).to.equal(@output)
         it ".line",   -> expect(@ex.line) .to.equal(@line)
 
-        describe "normalized defaults in .opts", ->
-            for k, [dflt, alt] of {
-                waitName: ['wait', null]
-                testName: ['test', null]
-                ellipsis: ['...', null]
-                ignoreWhitespace: [no, yes]
-                showOutput: [yes, no]
-                showDiff: [no, yes]
-                filename: ['<anonymous>', 'helloWorld.js']
-                stackDepth: [0, 2]
-            } then do (k, dflt, alt) ->
-                describe ".#{k} = #{util.inspect(dflt)}", ->
-                    it "when overwritten", ->
-                        expect(new Example("#{k}": alt).opts[k]).to.equal(alt)
-                    it "when unsupplied", ->
-                        expect(new Example({}).opts[k]).to.equal(dflt)
-                    it "when no options given", ->
-                        expect(new Example().opts[k]).to.equal(dflt)
-
-
-
+        describe "normalized defaults in .opts", -> checkDefaults(Example)
 
 
 
@@ -1068,8 +1068,7 @@ describe "mockdown.Document(opts)", ->
 
     beforeEach -> @c = new Document(@opts = globals: foo: 'bar')
 
-    it "sets .opts from the given opts", ->
-        expect(@c.opts).to.equal @opts
+    describe "sets .opts from the given opts", -> checkDefaults(Document)
 
     specifyContainer()
 

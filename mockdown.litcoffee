@@ -98,7 +98,9 @@ assigning to an object that inherits from the global context, as with the
 
     class mockdown.Document extends Container
 
-        constructor: (@opts) -> super
+        constructor: (opts) ->
+            @opts = assign({}, DEFAULT_OPTS, opts); super
+
         register: (suite, test, env = new mockdown.Environment @opts.globals) ->
             @registerChildren(suite, test, env)
 
@@ -118,8 +120,6 @@ assigning to an object that inherits from the global context, as with the
 
         register: (suiteFn, testFn, env) -> suiteFn @title, =>
             @registerChildren(suiteFn, testFn, env)
-
-
 
 ## Running Examples
 
@@ -160,6 +160,8 @@ assigning to an object that inherits from the global context, as with the
                     env.context[name] = params[k]
             return env.run(Array(@line).join('\n') + @code, @opts)
 
+
+
         writeError:(env, err) ->
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
@@ -185,6 +187,21 @@ assigning to an object that inherits from the global context, as with the
             stack.splice(msg.length, 0, "  at Example (#{@opts.filename}:#{@line})")
             err.stack = stack.join('\n')
             return err
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         runTest: (env, testObj, done) ->
 
@@ -214,27 +231,6 @@ assigning to an object that inherits from the global context, as with the
                 if waiter.waiting
                     @writeError(env, e)
                 else waiter.done(e)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
