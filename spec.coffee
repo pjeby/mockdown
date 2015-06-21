@@ -492,6 +492,7 @@ describe "mockdown.Environment(globals)", ->
 
 checkDefaults = (cls) ->
     for k, [dflt, alt] of {
+        skip: [no, yes]
         waitName: ['wait', null]
         testName: ['test', null]
         ellipsis: ['...', null]
@@ -527,7 +528,6 @@ describe "mockdown.Example(opts)", ->
         it ".line",   -> expect(@ex.line) .to.equal(@line)
 
         describe "normalized defaults in .opts", -> checkDefaults(Example)
-
 
 
 
@@ -941,6 +941,47 @@ describe "mockdown.Example(opts)", ->
             expect(testFn).to.have.been.calledOnce
             done()
 
+        it "creates a pending test if .opts.skip is truthy", (done) ->
+
+            ex = new Example(title: 'bar', skip: yes)
+            env = new Environment()
+            gts = spy.named 'getTitle', ex, 'getTitle'
+            rts = spy.named 'runTest', ex, 'runTest'
+            testCb = spy.named 'done'
+
+            suiteFn = -> done new Error("shouldn't have called suiteFn")
+
+            testFn = spy.named 'testFn', (title, cb) ->
+                expect(arguments.length).to.equal 1
+                expect(rts).to.not.have.been.called
+                expect(gts).to.have.been.calledOnce
+                expect(title).to.equal gts.returnValues[0]
+                expect(rts).to.not.have.been.called
+
+            ex.register(suiteFn, testFn, env)
+            expect(testFn).to.have.been.calledOnce
+            done()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 specifyContainer = ->
 
     describe ".add(child)", ->
@@ -1068,7 +1109,8 @@ describe "mockdown.Document(opts)", ->
 
     beforeEach -> @c = new Document(@opts = globals: foo: 'bar')
 
-    describe "sets .opts from the given opts", -> checkDefaults(Document)
+    describe "sets .opts from the given opts", ->
+        checkDefaults(Document)
 
     specifyContainer()
 

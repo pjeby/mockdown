@@ -42,16 +42,16 @@ assigning to an object that inherits from the global context, as with the
 ### Defaults
 
     DEFAULT_OPTS = {
-        waitName: 'wait'
-        testName: 'test'
-        ellipsis: '...'
-        ignoreWhitespace: no
-        showOutput: yes
-        showDiff: no
+        waitName: 'wait'        # name of 'wait()' function
+        testName: 'test'        # name for current mocha test object
+        ellipsis: '...'         # wildcard for output matching
+        ignoreWhitespace: no    # normalize whitespace for output mathching?
+        showOutput: yes         # output the result of evaluating each example
+        showDiff: no            # use mocha's diffing for match errors
         filename: '<anonymous>'
-        stackDepth: 0
+        stackDepth: 0           # max # of stack trace lines in error output
+        skip: no                # mark the test pending if true
     }
-
 
 
 
@@ -140,8 +140,11 @@ assigning to an object that inherits from the global context, as with the
             this
 
         register: (suiteFn, testFn, env) ->
-            my = this
-            testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
+            if @opts.skip
+                testFn @getTitle()
+            else
+                my = this
+                testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
 
         getTitle: ->
             return @title if @title?
@@ -154,19 +157,21 @@ assigning to an object that inherits from the global context, as with the
             ///
             if @seq then "Example "+@seq else "Example"
 
+
+
+
+
+
         evaluate: (env, params) ->
             if params
                 for k in Object.keys(params) when name = @opts[k+"Name"]
                     env.context[name] = params[k]
             return env.run(Array(@line).join('\n') + @code, @opts)
 
-
-
         writeError:(env, err) ->
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
 
         mismatch: (output) ->
             return if output is @output
@@ -187,11 +192,6 @@ assigning to an object that inherits from the global context, as with the
             stack.splice(msg.length, 0, "  at Example (#{@opts.filename}:#{@line})")
             err.stack = stack.join('\n')
             return err
-
-
-
-
-
 
 
 
