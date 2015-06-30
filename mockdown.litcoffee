@@ -24,6 +24,14 @@ assigning to an object that inherits from the global context, as with the
         return to
 
 
+#### `isPlainObject()`
+
+This function just detects whether a value is a "plain" Object -- that is, if
+its prototype is `Object.prototype`.  It's mainly used to validate options.
+
+    isPlainObject = (ob) ->
+        ob? and typeof ob is "object" and
+            Object.getPrototypeOf(ob) is Object.prototype
 
 
 
@@ -31,34 +39,67 @@ assigning to an object that inherits from the global context, as with the
 
 
 
+## Options
 
+    OPTION_DEFAULTS = {
 
-
-
-
-
-
-
-### Defaults
-
-    DEFAULT_OPTS = {
-        waitName: 'wait'        # name of 'wait()' function
-        testName: 'test'        # name for current mocha test object
         ellipsis: '...'         # wildcard for output matching
         ignoreWhitespace: no    # normalize whitespace for output mathching?
         showOutput: yes         # output the result of evaluating each example
         showDiff: no            # use mocha's diffing for match errors
-        filename: '<anonymous>'
         stackDepth: 0           # max # of stack trace lines in error output
-        skip: no                # mark the test pending if true
+
+        skip: no                # mark the test pending?
+
+        globals: {}             # global vars for examples
+        waitName: 'wait'        # name of 'wait()' function
+        testName: 'test'        # name for current mocha test object
+
+        filename: '<anonymous>'
+        line: undefined
+        title: undefined
+        code: undefined
+        output: undefined
     }
 
+    OPTION_NAMES = Object.keys(OPTION_DEFAULTS)
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+    class mockdown.Options
+
+        constructor: (opts={}, defaults=OPTION_DEFAULTS) ->
+            unless arguments.length < 3
+                throw new TypeError("Options() accepts two or fewer arguments")
+            unless isPlainObject(opts) or opts instanceof @constructor
+                throw new TypeError("opts must be a plain Object")
+            unless defaults is OPTION_DEFAULTS or defaults instanceof @constructor
+                throw new TypeError("Defaults must be an Options object") 
+            for key in Object.keys(opts)
+                unless OPTION_DEFAULTS.hasOwnProperty(key)
+                    throw new TypeError("Unknown option: "+key)
+            unless this instanceof mockdown.Options
+                return new mockdown.Options(opts, defaults) 
+
+            for key in OPTION_NAMES
+                val = if key of opts then opts[key] else defaults[key]
+                val = assign({}, val) if isPlainObject(val) # prevent sharing
+                this[key] = val
+    
 
 
 
@@ -99,7 +140,7 @@ assigning to an object that inherits from the global context, as with the
     class mockdown.Document extends Container
 
         constructor: (opts) ->
-            @opts = assign({}, DEFAULT_OPTS, opts); super
+            @opts = mockdown.Options(opts); super
 
         register: (suite, test, env = new mockdown.Environment @opts.globals) ->
             @registerChildren(suite, test, env)
@@ -128,11 +169,11 @@ assigning to an object that inherits from the global context, as with the
     class mockdown.Example
 
         constructor: (opts) ->
+            @opts = opts = mockdown.Options(opts)
             @title = opts?.title
             @code = opts?.code
             @line = opts?.line ? 1
             @output = opts?.output
-            @opts = assign {}, DEFAULT_OPTS, opts
             @seq = undefined
 
         onAdd: (container) ->

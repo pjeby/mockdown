@@ -14,7 +14,7 @@ failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
-{lex, Section, Example, Environment, Document, Waiter} = require './'
+{lex, Options, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
 
 
@@ -501,34 +501,103 @@ checkDefaults = (cls) ->
         showDiff: [no, yes]
         filename: ['<anonymous>', 'helloWorld.js']
         stackDepth: [0, 2]
+        globals: [{}, {x:'y'}]
+        line: [undefined, 42]
+        title: [undefined, 'An Example']
+        code: [undefined, '1+1']
+        output: [undefined, 'xxx']
     } then do (k, dflt, alt) ->
         describe ".#{k} = #{util.inspect(dflt)}", ->
             it "when overwritten", ->
-                expect(new cls("#{k}": alt).opts[k]).to.equal(alt)
+                expect(new cls("#{k}": alt).opts[k]).to.deep.equal(alt)
             it "when unsupplied", ->
-                expect(new cls({}).opts[k]).to.equal(dflt)
+                expect(new cls({}).opts[k]).to.deep.equal(dflt)
             it "when no options given", ->
-                expect(new cls().opts[k]).to.equal(dflt)
+                expect(new cls().opts[k]).to.deep.equal(dflt)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+describe "mockdown.Options(opts?, defaults?)", ->
+
+    it "works with or without `new`", ->
+        expect(Options({})).to.be.instanceOf(Options)
+        .and.deep.equal new Options {}
+
+    describe "argument validation", ->
+
+        it "expects at most two arguments", ->
+            expect(-> new Options({}, new Options({}), 42))
+            .to.throw /two or fewer arguments/
+
+        it "requires opts to be a plain Object or Options", ->
+            expect(-> new Options new class Foo)
+            .to.throw /must be a plain Object/
+
+        it "requires defaults to be an Options instance", ->
+            expect(-> new Options {}, {})
+            .to.throw /must be an Options object/
+
+        it "rejects invalid keys in opts", ->
+            expect(-> new Options {x: 'y'})
+            .to.throw /Unknown option: x/
+
+        describe "allows empty arguments", ->
+            it "by omission", ->
+                expect(new Options).to.deep.equal new Options {}
+            it "by passing null", ->
+                expect(new Options null, null).to.deep.equal new Options {}
+            it "by passing undefined", ->
+                expect(new Options undefined, undefined)
+                .to.deep.equal new Options {}
+
+    describe "gets properties from opts, including", ->
+        checkDefaults class StdOpts
+            constructor: (opts) -> @opts = new Options(opts)
+
+    describe "gets defaults from defaults, including", ->
+        checkDefaults class DefaultOpts
+            constructor: (opts) -> @opts = new Options({}, new Options(opts))
 
 describe "mockdown.Example(opts)", ->
 
     describe "gets properties from opts, including", ->
 
-        beforeEach -> @ex = new Example(
+        beforeEach -> @ex = new Example(@opts = new Options(@args = (
             title: @title = "Hello world"
             code: @code = 'console.log("Hello world!")'
             output: @output = 'Hello world!\n'
             line: @line = 42
-        )
+        )))
 
         it ".title",  -> expect(@ex.title) .to.equal(@title)
         it ".code",   -> expect(@ex.code)  .to.equal(@code)
         it ".output", -> expect(@ex.output).to.equal(@output)
         it ".line",   -> expect(@ex.line) .to.equal(@line)
 
-        describe "normalized defaults in .opts", -> checkDefaults(Example)
+        describe ".opts", ->
 
+            it "when passed an Options object", ->
+                expect(@ex.opts).to.be.instanceOf(Options).and.deep.equal(@opts)
+                expect(@ex.opts).to.not.equal(@opts)
+
+            it "when passed a plain object", ->
+                d = new Example(@args)
+                expect(d.opts).to.be.instanceOf(Options).and.deep.equal(@opts)
+                expect(d.opts).to.not.equal(@opts)
 
 
     describe ".mismatch(output)", ->
@@ -540,34 +609,6 @@ describe "mockdown.Example(opts)", ->
 
         it "normalizes whitespace when opts.ignoreWhitespace"
         it "treats opts.ellipsis as a wildcard when set"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1107,10 +1148,16 @@ describe "mockdown.Section(title)", ->
 
 describe "mockdown.Document(opts)", ->
 
-    beforeEach -> @c = new Document(@opts = globals: foo: 'bar')
+    beforeEach -> @c = new Document @o = new Options @a = globals: foo: 'bar'
 
     describe "sets .opts from the given opts", ->
-        checkDefaults(Document)
+        it "when passed an Options object", ->
+            expect(@c.opts).to.be.instanceOf(Options).and.not.equal(@o)
+            expect(@c.opts).to.deep.equal(@o)
+        it "when passed a plain object", ->
+            d = new Document(@a)
+            expect(d.opts).to.be.instanceOf(Options).and.not.equal(@o)
+            expect(d.opts).to.deep.equal(@o)
 
     specifyContainer()
 
@@ -1139,12 +1186,6 @@ describe "mockdown.Document(opts)", ->
             expect(rc).to.have.been.calledWithExactly(sf, tf, env)
             expect(env).to.be.an.instanceOf(Environment)
             expect(env.context.foo).to.exist.and.equal 'bar'
-
-
-
-
-
-
 
 describe "mockdown.lex(src)", ->
 
