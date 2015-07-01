@@ -121,18 +121,18 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             return err
 
 
+        offset: (code=@code, line=@line) -> Array(line).join('\n') + code
+
         evaluate: (env, params) ->
             if params
                 for k in Object.keys(params) when name = this[k+"Name"]
                     env.context[name] = params[k]
-            return env.run(Array(@line).join('\n') + @code, this)
+            return env.run(@offset(), this)
 
         writeError: (env, err) ->
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
-
 
 
 
