@@ -88,37 +88,37 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             unless isPlainObject(opts) or opts instanceof @constructor
                 throw new TypeError("opts must be a plain Object")
             unless defaults is OPTION_DEFAULTS or defaults instanceof @constructor
-                throw new TypeError("Defaults must be an Options object") 
+                throw new TypeError("Defaults must be an Options object")
             for key in Object.keys(opts)
                 unless OPTION_DEFAULTS.hasOwnProperty(key)
                     throw new TypeError("Unknown option: "+key)
             unless this instanceof mockdown.Options
-                return new mockdown.Options(opts, defaults) 
+                return new mockdown.Options(opts, defaults)
 
             for key in OPTION_NAMES
                 val = if key of opts then opts[key] else defaults[key]
                 val = assign({}, val) if isPlainObject(val) # prevent sharing
                 this[key] = val
-    
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        mismatch: (output) ->
+            return if output is @output
+            msg = ['']
+            if @showOutput
+                msg.push 'Code:'
+                msg.push '    '+l for l in (@code ? '').split('\n')
+                msg.push 'Expected:'
+                msg.push '>     '+l for l in expected = @output.split('\n')
+                msg.push 'Got:'
+                msg.push '>     '+l for l in actual = output.split('\n')
+            err = new Error(msg.join('\n'))
+            err.name = 'Failed example'
+            err.showDiff = @showDiff
+            err.expected = expected
+            err.actual = actual
+            stack = err.stack.split('\n')
+            stack.splice(msg.length, 0, "  at Example (#{@filename}:#{@line})")
+            err.stack = stack.join('\n')
+            return err
 
 
 ## Containers
@@ -214,25 +214,25 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
 
-        mismatch: (output) ->
-            return if output is @output
-            msg = ['']
-            if @opts.showOutput
-                msg.push 'Code:'
-                msg.push '    '+l for l in (@code ? '').split('\n')
-                msg.push 'Expected:'
-                msg.push '>     '+l for l in expected = @output.split('\n')
-                msg.push 'Got:'
-                msg.push '>     '+l for l in actual = output.split('\n')
-            err = new Error(msg.join('\n'))
-            err.name = 'Failed example'
-            err.showDiff = @opts.showDiff
-            err.expected = expected
-            err.actual = actual
-            stack = err.stack.split('\n')
-            stack.splice(msg.length, 0, "  at Example (#{@opts.filename}:#{@line})")
-            err.stack = stack.join('\n')
-            return err
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -254,7 +254,7 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
                 else
                     finished = yes
                     @writeError(env, err) if err
-                    matchErr = @mismatch(env.getOutput())
+                    matchErr = @opts.mismatch(env.getOutput())
 
                     if not matchErr
                         done.call(null, undefined)

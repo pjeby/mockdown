@@ -602,10 +602,10 @@ describe "mockdown.Example(opts)", ->
 
     describe ".mismatch(output)", ->
 
-        mismatch = (opts, output) -> new Example(opts).mismatch(output)
+        mismatch = (opts, output) -> new Options(opts).mismatch(output)
 
         it "returns an untrue value if output matches opts.output", ->
-            expect(!!new Example(output:'x').mismatch('x')).to.be.false
+            expect(!!new Options(output:'x').mismatch('x')).to.be.false
 
         it "normalizes whitespace when opts.ignoreWhitespace"
         it "treats opts.ellipsis as a wildcard when set"
@@ -640,7 +640,7 @@ describe "mockdown.Example(opts)", ->
                 .to.be.true
 
             it "has a stack that includes opts.filename:opts.line", ->
-                err = new Example(
+                err = new Options(
                     output:'x\ny', line:55, filename:'foo.md', showOutput:no
                 ).mismatch('y\nz')
                 expect(err.stack.split('\n')[1])
@@ -746,7 +746,7 @@ describe "mockdown.Example(opts)", ->
 
             @runTest = (@ex, @testOb={}, @done = spy.named 'done') ->
                 @evaled = spy.named 'evaluate', @ex, 'evaluate'
-                @checked = spy.named 'mismatch', @ex, 'mismatch'
+                @checked = spy.named 'mismatch', @ex.opts, 'mismatch'
                 @ex.runTest(@env, @testOb, @done)
 
             @checkRanOnce = ->
