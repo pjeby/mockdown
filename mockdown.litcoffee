@@ -121,6 +121,47 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             return err
 
 
+        evaluate: (env, params) ->
+            if params
+                for k in Object.keys(params) when name = this[k+"Name"]
+                    env.context[name] = params[k]
+            return env.run(Array(@line).join('\n') + @code, this)
+
+        writeError: (env, err) ->
+            msgLines = err.message.split('\n').length
+            stack = err.stack.split('\n').slice(0, @stackDepth + msgLines)
+            env.context.console.error(stack.join('\n'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Containers
 
     class Container
@@ -203,47 +244,6 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
 
 
 
-        evaluate: (env, params) ->
-            if params
-                for k in Object.keys(params) when name = @opts[k+"Name"]
-                    env.context[name] = params[k]
-            return env.run(Array(@line).join('\n') + @code, @opts)
-
-        writeError:(env, err) ->
-            msgLines = err.message.split('\n').length
-            stack = err.stack.split('\n').slice(0, @opts.stackDepth + msgLines)
-            env.context.console.error(stack.join('\n'))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         runTest: (env, testObj, done) ->
 
             finished = no
@@ -253,7 +253,7 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
                     done(err) if err
                 else
                     finished = yes
-                    @writeError(env, err) if err
+                    @opts.writeError(env, err) if err
                     matchErr = @opts.mismatch(env.getOutput())
 
                     if not matchErr
@@ -266,11 +266,11 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             testObj.callback = waiter.done
 
             try
-                @evaluate(env, wait: waiter.wait, test: testObj)
+                @opts.evaluate(env, wait: waiter.wait, test: testObj)
                 waiter.done() unless waiter.waiting
             catch e
                 if waiter.waiting
-                    @writeError(env, e)
+                    @opts.writeError(env, e)
                 else waiter.done(e)
 
 

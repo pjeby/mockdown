@@ -613,6 +613,88 @@ describe "mockdown.Options(opts?, defaults?)", ->
                 expect(err.stack.split('\n')[1])
                 .to.equal "  at Example (foo.md:55)"
 
+    describe ".evaluate(env, params)", ->
+
+        evaluate = (opts, env=new Environment, params) ->
+            o = new Options(opts)
+            if arguments.length>2
+                return o.evaluate(env, params)
+            return o.evaluate(env)
+
+        it "runs opts.code in env, returning the result", ->
+            expect(evaluate(code: 'foo', new Environment(foo: 42)))
+            .to.equal(42)
+
+        it "uses the correct line numbers and filenames in stack traces", ->
+            try
+                evaluate(
+                    code: '\n\nthrow new Error', line: 40
+                    filename: 'throw-sample.js'
+                )
+            catch e
+                s = e.stack.split('\n').slice(0, 2)
+                expect(s).to.deep.equal(['Error', '  at throw-sample.js:42:7'])
+                return
+            throw new Error("Example didn't throw")
+
+        it "makes params.wait available under opts.waitName, if set", ->
+            expect(evaluate(code:'wait', null, wait:42)).to.equal 42
+            expect(evaluate(code:'hold', waitName: 'hold', null, wait:42))
+            .to.equal 42
+
+
+        it "makes params.test available under opts.testName, if set", ->
+            expect(evaluate(code:'test', null, test:99)).to.equal 99
+            expect(evaluate(code:'example', testName: 'example', null, test:99)
+            ).to.equal 99
+
+
+
+
+
+
+
+    describe ".writeError(env, err)", ->
+
+        getError = (stackDepth, err) ->
+            new Options({stackDepth}).writeError(env = new Environment, err)
+            return env.getOutput()
+
+        it "writes err.stack to env's console", ->
+            expect(getError(Infinity, err = new Error("message")).split('\n'))
+            .to.deep.equal (err.stack+'\n').split('\n')
+
+        it "trims the stack to .stackDepth lines", ->
+            expect(getError(1, err = new Error("message\n1\n2")).split('\n'))
+            .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 describe "mockdown.Example(opts)", ->
 
     describe "gets properties from opts, including", ->
@@ -654,61 +736,6 @@ describe "mockdown.Example(opts)", ->
 
 
 
-    describe ".evaluate(env, params)", ->
-
-        evaluate = (opts, env=new Environment, params) ->
-            ex = new Example(opts)
-            if arguments.length>2
-                return ex.evaluate(env, params)
-            return ex.evaluate(env)
-
-        it "runs opts.code in env, returning the result", ->
-            expect(evaluate(code: 'foo', new Environment(foo: 42)))
-            .to.equal(42)
-
-        it "uses the correct line numbers and filenames in stack traces", ->
-            try
-                evaluate(
-                    code: '\n\nthrow new Error', line: 40
-                    filename: 'throw-sample.js'
-                )
-            catch e
-                s = e.stack.split('\n').slice(0, 2)
-                expect(s).to.deep.equal(['Error', '  at throw-sample.js:42:7'])
-                return
-            throw new Error("Example didn't throw")
-
-        it "makes params.wait available under opts.waitName, if set", ->
-            expect(evaluate(code:'wait', null, wait:42)).to.equal 42
-            expect(evaluate(code:'hold', waitName: 'hold', null, wait:42))
-            .to.equal 42
-
-
-        it "makes params.test available under opts.testName, if set", ->
-            expect(evaluate(code:'test', null, test:99)).to.equal 99
-            expect(evaluate(code:'example', testName: 'example', null, test:99)
-            ).to.equal 99
-
-
-
-
-
-
-
-    describe ".writeError(env, err)", ->
-
-        getError = (stackDepth, err) ->
-            new Example({stackDepth}).writeError(env = new Environment, err)
-            return env.getOutput()
-
-        it "writes err.stack to env's console", ->
-            expect(getError(Infinity, err = new Error("message")).split('\n'))
-            .to.deep.equal (err.stack+'\n').split('\n')
-
-        it "trims the stack to opts.stackDepth lines", ->
-            expect(getError(1, err = new Error("message\n1\n2")).split('\n'))
-            .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
-
     describe ".getTitle()", ->
 
         it "returns .title if set", ->
@@ -736,6 +763,20 @@ describe "mockdown.Example(opts)", ->
                     Not! #{cmt} An example using #{cmt} as a delimiter"""
                 expect(ex.getTitle()).to.equal("Example")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     describe ".runTest(env, testObj, done)", ->
 
         beforeEach ->
@@ -745,14 +786,14 @@ describe "mockdown.Example(opts)", ->
             @testOb = {}
 
             @runTest = (@ex, @testOb={}, @done = spy.named 'done') ->
-                @evaled = spy.named 'evaluate', @ex, 'evaluate'
+                @evaled = spy.named 'evaluate', @ex.opts, 'evaluate'
                 @checked = spy.named 'mismatch', @ex.opts, 'mismatch'
                 @ex.runTest(@env, @testOb, @done)
 
             @checkRanOnce = ->
                 expect(@evaled).to.have.been.calledOnce
                 expect(@evaled).to.have.been.calledWith(@env)
-                expect(@evaled).to.have.been.calledOn(@ex)
+                expect(@evaled).to.have.been.calledOn(@ex.opts)
                 expect(@evaled.args[0][1].test).to.equal(@testOb)
                 expect(@gotOutput).to.have.been.calledOnce
                 expect(@gotOutput).to.have.been.calledAfter @evaled
