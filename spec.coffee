@@ -572,6 +572,47 @@ describe "mockdown.Options(opts?, defaults?)", ->
         checkDefaults class DefaultOpts
             constructor: (opts) -> @opts = new Options({}, new Options(opts))
 
+    describe ".mismatch(output)", ->
+        mismatch = (opts, output) -> new Options(opts).mismatch(output)
+
+        it "returns an untrue value if output matches opts.output", ->
+            expect(!!new Options(output:'x').mismatch('x')).to.be.false
+
+        it "normalizes whitespace when opts.ignoreWhitespace"
+        it "treats opts.ellipsis as a wildcard when set"
+
+        describe "returns an error object for mismatches, that", ->
+
+            it "has .actual and .expected line-list properties", ->
+                err = mismatch(output:'x\ny', 'y\nz')
+                expect(err.name).to.equal('Failed example')
+                expect(err).to.be.instanceOf(Error)
+                expect(err.actual).to.deep.equal ['y','z']
+                expect(err.expected).to.deep.equal ['x','y']
+
+            it "has actual/expected in .message if opts.showOutput", ->
+                expect(mismatch(
+                    code:'foo()\nbar()', output:'a\nb', showOutput: no, 'b\nc'
+                ).message).to.equal('')
+                err = mismatch(code:'foo()\nbar()', output:'a\nb', 'b\nc')
+                expect(err.message.split('\n')).to.deep.equal [
+                    '', 'Code:', '    foo()', '    bar()'
+                    'Expected:', '>     a', '>     b'
+                    'Got:',      '>     b', '>     c'
+                ]
+
+            it "has a true .showDiff if opts.showDiff", ->
+                expect(mismatch(output:'x\ny', 'y\nz').showDiff).to.be.false
+                expect(mismatch(output:'x\ny', showDiff: yes, 'y\nz').showDiff)
+                .to.be.true
+
+            it "has a stack that includes opts.filename:opts.line", ->
+                err = new Options(
+                    output:'x\ny', line:55, filename:'foo.md', showOutput:no
+                ).mismatch('y\nz')
+                expect(err.stack.split('\n')[1])
+                .to.equal "  at Example (foo.md:55)"
+
 describe "mockdown.Example(opts)", ->
 
     describe "gets properties from opts, including", ->
@@ -600,51 +641,10 @@ describe "mockdown.Example(opts)", ->
                 expect(d.opts).to.not.equal(@opts)
 
 
-    describe ".mismatch(output)", ->
-
-        mismatch = (opts, output) -> new Options(opts).mismatch(output)
-
-        it "returns an untrue value if output matches opts.output", ->
-            expect(!!new Options(output:'x').mismatch('x')).to.be.false
-
-        it "normalizes whitespace when opts.ignoreWhitespace"
-        it "treats opts.ellipsis as a wildcard when set"
 
 
 
 
-        describe "returns an error object for mismatches, that", ->
-
-            it "has .actual and .expected line-list properties", ->
-                err = mismatch(output:'x\ny', 'y\nz')
-                expect(err.name).to.equal('Failed example')
-                expect(err).to.be.instanceOf(Error)
-                expect(err.actual).to.deep.equal ['y','z']
-                expect(err.expected).to.deep.equal ['x','y']
-
-            it "has actual/expected in .message if opts.showOutput", ->
-                expect(mismatch(
-                    code:'foo()\nbar()', output:'a\nb', showOutput: no, 'b\nc'
-                ).message).to.equal('')
-
-                err = mismatch(code:'foo()\nbar()', output:'a\nb', 'b\nc')
-                expect(err.message.split('\n')).to.deep.equal [
-                    '', 'Code:', '    foo()', '    bar()'
-                    'Expected:', '>     a', '>     b'
-                    'Got:',      '>     b', '>     c'
-                ]
-
-            it "has a true .showDiff if opts.showDiff", ->
-                expect(mismatch(output:'x\ny', 'y\nz').showDiff).to.be.false
-                expect(mismatch(output:'x\ny', showDiff: yes, 'y\nz').showDiff)
-                .to.be.true
-
-            it "has a stack that includes opts.filename:opts.line", ->
-                err = new Options(
-                    output:'x\ny', line:55, filename:'foo.md', showOutput:no
-                ).mismatch('y\nz')
-                expect(err.stack.split('\n')[1])
-                .to.equal "  at Example (foo.md:55)"
 
 
 
