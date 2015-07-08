@@ -36,6 +36,6 @@
   },
   "dependencies": {
     "marked": "^0.3.3",
-    "recast": "^0.10.12"
+    "mock-globals": "^0.1.0"
   }
 }
