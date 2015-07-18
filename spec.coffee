@@ -370,11 +370,11 @@ describe "mockdown.Example(opts...)", ->
     describe ".mismatch(output)", ->
         mismatch = (opts, output) -> new Example(opts).mismatch(output)
 
-        it "returns an untrue value if output matches opts.output", ->
+        it "returns an untrue value if output matches .output", ->
             expect(!!new Example(output:'x').mismatch('x')).to.be.false
 
-        it "normalizes whitespace when opts.ignoreWhitespace"
-        it "treats opts.ellipsis as a wildcard when set"
+        it "normalizes whitespace when .ignoreWhitespace"
+        it "treats .ellipsis as a wildcard when set"
 
         describe "returns an error object for mismatches, that", ->
 
@@ -385,7 +385,7 @@ describe "mockdown.Example(opts...)", ->
                 expect(err.actual).to.deep.equal ['y','z']
                 expect(err.expected).to.deep.equal ['x','y']
 
-            it "has actual/expected in .message if opts.showOutput", ->
+            it "has actual/expected in .message if .showOutput", ->
                 expect(mismatch(
                     code:'foo()\nbar()', output:'a\nb', showOutput: no, 'b\nc'
                 ).message).to.equal('')
@@ -396,12 +396,12 @@ describe "mockdown.Example(opts...)", ->
                     'Got:',      '>     b', '>     c'
                 ]
 
-            it "has a true .showDiff if opts.showDiff", ->
+            it "has a true .showDiff if .showDiff", ->
                 expect(mismatch(output:'x\ny', 'y\nz').showDiff).to.be.false
                 expect(mismatch(output:'x\ny', showDiff: yes, 'y\nz').showDiff)
                 .to.be.true
 
-            it "has a stack that includes opts.filename:opts.line", ->
+            it "has a stack that includes .filename:.line", ->
                 err = new Example(
                     output:'x\ny', line:55, filename:'foo.md', showOutput:no
                 ).mismatch('y\nz')
@@ -416,7 +416,7 @@ describe "mockdown.Example(opts...)", ->
                 return o.evaluate(env, params)
             return o.evaluate(env)
 
-        it "runs opts.code in env, returning the result", ->
+        it "runs .code in env, returning the result", ->
             expect(evaluate(code: 'foo', new Environment(foo: 42)))
             .to.equal(42)
 
@@ -432,13 +432,13 @@ describe "mockdown.Example(opts...)", ->
                 return
             throw new Error("Example didn't throw")
 
-        it "makes params.wait available under opts.waitName, if set", ->
+        it "makes params.wait available under .waitName, if set", ->
             expect(evaluate(code:'wait', null, wait:42)).to.equal 42
             expect(evaluate(code:'hold', waitName: 'hold', null, wait:42))
             .to.equal 42
 
 
-        it "makes params.test available under opts.testName, if set", ->
+        it "makes params.test available under .testName, if set", ->
             expect(evaluate(code:'test', null, test:99)).to.equal 99
             expect(evaluate(code:'example', testName: 'example', null, test:99)
             ).to.equal 99
@@ -577,7 +577,7 @@ describe "mockdown.Example(opts...)", ->
             @runTest(ex); @checkDone()
             expect(@checked).to.have.been.calledWithExactly('42\n')
 
-        it "makes a distinct wait() available under opts.waitName", ->
+        it "makes a distinct wait() available under .waitName", ->
             @runTest new Example(code: 'waitFn = wait; undefined', output:'')
             expect_fn(@env.context.waitFn)
             @runTest new Example(
@@ -963,7 +963,7 @@ describe "mockdown.Document(opts)", ->
             expect(rc).to.have.been.calledOnce
             expect(rc).to.have.been.calledWithExactly(sf, tf, env)
 
-        it "creates an env using .opts.globals", ->
+        it "creates an env using .globals", ->
             rc = spy.named 'registerChildren', @c, 'registerChildren'
             sf = spy.named 'suiteFn'
             tf = spy.named 'testFn'
