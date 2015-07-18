@@ -1,5 +1,7 @@
 # mocha + markdown = mockdown
 
+> Note: as of the 0.0.x releases, this package doesn't actually *parse* markdown or handle directives yet.  You can use the `Example`, `Section`, and `Document` classes, but the parser and the mocha interface aren't quite done yet.  See the [BDD specs](https://github.com/pjeby/mockdown/tree/master/spec.coffee) for how to use the stuff that's implemented so far.
+
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
 But what if you could *automatically* test your examples, as part of your project's existing mocha test suites?  For that matter, what if you could do *documentation-first testing*, by writing the API docs for the API you're creating, and use the examples in them to drive your initial development?
@@ -28,8 +30,8 @@ setTimeout(function(){
 
 Section headings in your markdown files define mocha suites, so your test suites will precisely match the table of contents of your documentation files.  If you need to do things like mark tests to be skipped or ignored, you can add simple HTML comment directives like this:
 
-<!-- mockdown: +ignore -->
-    <!-- mockdown: +skip -->
+<!-- mockdown: ++ignore -->
+    <!-- mockdown: ++skip -->
 
 in order to mark a test pending, override the language defaults, change how output is checked, etc.
 
@@ -59,6 +61,7 @@ mockdown.testFiles(['README.md'], {
 If you call this from a top-level module, the added test suites will be at the top level;  if you call it from inside a suite or `describe()` block, the suites will be nested within that block.
 
 ### Language Options
+
 ### Output Matching Options
 
 ## Writing Tests

@@ -334,21 +334,13 @@ describe "mockdown.Options(opts?, defaults?)", ->
 
     describe "argument validation", ->
 
-        it "expects at most two arguments", ->
-            expect(-> new Options({}, new Options({}), 42))
-            .to.throw /two or fewer arguments/
-
         it "requires opts to be a plain Object or Options", ->
             expect(-> new Options new class Foo)
-            .to.throw /must be a plain Object/
-
-        it "requires defaults to be an Options instance", ->
-            expect(-> new Options {}, {})
-            .to.throw /must be an Options object/
+            .to.throw /must be plain Object/
 
         it "rejects invalid keys in opts", ->
             expect(-> new Options {x: 'y'})
-            .to.throw /Unknown option: x/
+            .to.throw /Unknown property: x/
 
         describe "allows empty arguments", ->
             it "by omission", ->
@@ -366,6 +358,14 @@ describe "mockdown.Options(opts?, defaults?)", ->
     describe "gets defaults from defaults, including", ->
         checkDefaults class DefaultOpts
             constructor: (opts) -> @opts = new Options({}, new Options(opts))
+
+
+
+
+
+
+
+
 
     describe ".mismatch(output)", ->
         mismatch = (opts, output) -> new Options(opts).mismatch(output)

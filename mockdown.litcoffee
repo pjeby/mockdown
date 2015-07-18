@@ -4,101 +4,87 @@
 
     mockdown.Environment = require('mock-globals').Environment
 
+    auto = require 'autocreate'
+    {string, object, empty} = props = require 'prop-schema'
 
-### Utility Functions
+    bool = props.integer.and((v) -> v>0).or props.boolean
+    int = props.integer.and(props.nonNegative)
+    posInt = props.integer.and(props.positive)
 
-#### `assign()`
+    maybe = (t) -> empty.or(t)
 
-The `assign()` function is roughly equivalent to an `Object.assign()` polyfill,
-except that it uses `Object.defineProperty()` to ensure that e.g. an inherited
-descriptor on the target can't veto an assignment.  (As can happen when
-assigning to an object that inherits from the global context, as with the
-`.context` property of a `mockdown.Environment`.)
-
-    assign = (target={}) ->
-        to = Object(target)
-        writable = configurable = enumerable = yes
-        for arg, i in arguments when i and arg?     # skip first and empties
-            arg = Object(arg)
-            for k in Object.keys(arg)
-                Object.defineProperty(to, k, {
-                    value: arg[k], writable, configurable, enumerable
-                })
-        return to
+    infinInt = int.or(
+        props.check "must be integer or Infinity",
+            (v) -> v is Infinity
+    )
 
 
-#### `isPlainObject()`
 
-This function just detects whether a value is a "plain" Object -- that is, if
-its prototype is `Object.prototype`.  It's mainly used to validate options.
 
-    isPlainObject = (ob) ->
-        ob? and typeof ob is "object" and
-            Object.getPrototypeOf(ob) is Object.prototype
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 ## Options
 
-    OPTION_DEFAULTS = {
+    option_specs =
+        ellipsis:
+            empty.or(string) '...', "wildcard for output matching"
+        ignoreWhitespace:
+            bool no, "normalize whitespace for output mathching?"
 
-        ellipsis: '...'         # wildcard for output matching
-        ignoreWhitespace: no    # normalize whitespace for output mathching?
-        showOutput: yes         # output the result of evaluating each example
-        showDiff: no            # use mocha's diffing for match errors
-        stackDepth: 0           # max # of stack trace lines in error output
+        showOutput: bool yes, "show expected/actual output in errors"
+        showDiff:   bool no, "use mocha's diffing for match errors"
+        stackDepth: infinInt 0, "max # of stack trace lines in error output"
 
-        skip: no                # mark the test pending?
+        skip:   bool no, "mark the test pending?"
+        ignore: bool no, "treat the example as a non-test"
 
-        globals: {}             # global vars for examples
-        waitName: 'wait'        # name of 'wait()' function
-        testName: 'test'        # name for current mocha test object
+        title: maybe(string) undefined, "title of the test"
+        waitName: maybe(string) 'wait', "name of 'wait()' function"
+        testName: maybe(string) 'test', "name of current mocha test object"
 
-        filename: '<anonymous>'
-        line: undefined
-        title: undefined
-        code: undefined
-        output: undefined
-    }
+        printResults: bool yes, "output the result of evaluating each example"
+        ingoreUndefined: bool yes, "don't output undefined results"
+        writer:
+            maybe(props.function) undefined, "function used to format results"
+        
+        globals:
+            object {}, "global vars for examples", kind: "global"
 
-    OPTION_NAMES = Object.keys(OPTION_DEFAULTS)
+        #languages:
+        #    object DEFAULT_LANGUAGES, "language specs", kind: "global", (v) ->
+        #        validateAndCloneLanguages(v)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        filename:
+            string '<anonymous>', "filename for stack traces", kind: "private"
+        line:
+            maybe(posInt) undefined, "line number for stack traces",
+                kind: "private"
+        code:
+            maybe(string) undefined, "code of the test", kind: "private"
+        output:
+            maybe(string) undefined, "expected output", kind: "private"
 
     class mockdown.Options
+        Options = auto @
+        props(@, option_specs)
 
-        constructor: (opts={}, defaults=OPTION_DEFAULTS) ->
-            unless arguments.length < 3
-                throw new TypeError("Options() accepts two or fewer arguments")
-            unless isPlainObject(opts) or opts instanceof @constructor
-                throw new TypeError("opts must be a plain Object")
-            unless defaults is OPTION_DEFAULTS or defaults instanceof @constructor
-                throw new TypeError("Defaults must be an Options object")
-            for key in Object.keys(opts)
-                unless OPTION_DEFAULTS.hasOwnProperty(key)
-                    throw new TypeError("Unknown option: "+key)
-            unless this instanceof mockdown.Options
-                return new mockdown.Options(opts, defaults)
-
-            for key in OPTION_NAMES
-                val = if key of opts then opts[key] else defaults[key]
-                val = assign({}, val) if isPlainObject(val) # prevent sharing
-                this[key] = val
+        constructor: -> props.Base.apply(this, arguments)
 
         mismatch: (output) ->
             return if output is @output
@@ -133,33 +119,6 @@ its prototype is `Object.prototype`.  It's mainly used to validate options.
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## Containers
