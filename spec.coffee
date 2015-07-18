@@ -14,7 +14,7 @@ failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
-{lex, Options, Section, Example, Environment, Document, Waiter} = require './'
+{lex, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
 
 
@@ -285,7 +285,8 @@ describe "mockdown.Waiter(cb)", ->
 
 
 
-checkDefaults = (cls) ->
+checkDefaults = (cls, isDocument=no) ->
+
     for k, [dflt, alt] of {
         skip: [no, yes]
         waitName: ['wait', null]
@@ -302,13 +303,17 @@ checkDefaults = (cls) ->
         code: [undefined, '1+1']
         output: [undefined, 'xxx']
     } then do (k, dflt, alt) ->
+
+        # Don't test internal props on Document
+        return if isDocument and k in ['title', 'code', 'output', 'line']
+
         describe ".#{k} = #{util.inspect(dflt)}", ->
             it "when overwritten", ->
-                expect(new cls("#{k}": alt).opts[k]).to.deep.equal(alt)
+                expect(new cls("#{k}": alt)[k]).to.deep.equal(alt)
             it "when unsupplied", ->
-                expect(new cls({}).opts[k]).to.deep.equal(dflt)
+                expect(new cls({})[k]).to.deep.equal(dflt)
             it "when no options given", ->
-                expect(new cls().opts[k]).to.deep.equal(dflt)
+                expect(new cls()[k]).to.deep.equal(dflt)
 
 
 
@@ -321,43 +326,38 @@ checkDefaults = (cls) ->
 
 
 
-
-
-
-
-
-describe "mockdown.Options(opts?, defaults?)", ->
+describe "mockdown.Example(opts...)", ->
 
     it "works with or without `new`", ->
-        expect(Options({})).to.be.instanceOf(Options)
-        .and.deep.equal new Options {}
+        expect(Example({})).to.be.instanceOf(Example)
+        .and.deep.equal new Example {}
+
+    describe "gets properties from opts, including", ->
+        checkDefaults Example
 
     describe "argument validation", ->
 
-        it "requires opts to be a plain Object or Options", ->
-            expect(-> new Options new class Foo)
+        it "requires opts to be a plain Object, Document, or Example", ->
+            expect(new Example new Document).to.eql new Example
+            expect(new Example new Example).to.eql new Example
+            expect(-> new Example new class Foo)
             .to.throw /must be plain Object/
 
         it "rejects invalid keys in opts", ->
-            expect(-> new Options {x: 'y'})
+            expect(-> new Example {x: 'y'})
             .to.throw /Unknown property: x/
 
         describe "allows empty arguments", ->
+
             it "by omission", ->
-                expect(new Options).to.deep.equal new Options {}
+                expect(new Example).to.deep.equal new Example {}
+
             it "by passing null", ->
-                expect(new Options null, null).to.deep.equal new Options {}
+                expect(new Example null, null).to.deep.equal new Example {}
+
             it "by passing undefined", ->
-                expect(new Options undefined, undefined)
-                .to.deep.equal new Options {}
-
-    describe "gets properties from opts, including", ->
-        checkDefaults class StdOpts
-            constructor: (opts) -> @opts = new Options(opts)
-
-    describe "gets defaults from defaults, including", ->
-        checkDefaults class DefaultOpts
-            constructor: (opts) -> @opts = new Options({}, new Options(opts))
+                expect(new Example undefined, undefined)
+                .to.deep.equal new Example {}
 
 
 
@@ -368,10 +368,10 @@ describe "mockdown.Options(opts?, defaults?)", ->
 
 
     describe ".mismatch(output)", ->
-        mismatch = (opts, output) -> new Options(opts).mismatch(output)
+        mismatch = (opts, output) -> new Example(opts).mismatch(output)
 
         it "returns an untrue value if output matches opts.output", ->
-            expect(!!new Options(output:'x').mismatch('x')).to.be.false
+            expect(!!new Example(output:'x').mismatch('x')).to.be.false
 
         it "normalizes whitespace when opts.ignoreWhitespace"
         it "treats opts.ellipsis as a wildcard when set"
@@ -402,7 +402,7 @@ describe "mockdown.Options(opts?, defaults?)", ->
                 .to.be.true
 
             it "has a stack that includes opts.filename:opts.line", ->
-                err = new Options(
+                err = new Example(
                     output:'x\ny', line:55, filename:'foo.md', showOutput:no
                 ).mismatch('y\nz')
                 expect(err.stack.split('\n')[1])
@@ -411,7 +411,7 @@ describe "mockdown.Options(opts?, defaults?)", ->
     describe ".evaluate(env, params)", ->
 
         evaluate = (opts, env=new Environment, params) ->
-            o = new Options(opts)
+            o = new Example(opts)
             if arguments.length>2
                 return o.evaluate(env, params)
             return o.evaluate(env)
@@ -452,7 +452,7 @@ describe "mockdown.Options(opts?, defaults?)", ->
     describe ".writeError(env, err)", ->
 
         getError = (stackDepth, err) ->
-            new Options({stackDepth}).writeError(env = new Environment, err)
+            new Example({stackDepth}).writeError(env = new Environment, err)
             return env.getOutput()
 
         it "writes err.stack to env's console", ->
@@ -475,47 +475,6 @@ describe "mockdown.Options(opts?, defaults?)", ->
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-describe "mockdown.Example(opts)", ->
-
-    describe "gets properties from opts, including", ->
-
-        beforeEach -> @ex = new Example(@opts = new Options(@args = (
-            title: @title = "Hello world"
-            code: @code = 'console.log("Hello world!")'
-            output: @output = 'Hello world!\n'
-            line: @line = 42
-        )))
-
-        it ".title",  -> expect(@ex.title) .to.equal(@title)
-        it ".code",   -> expect(@ex.code)  .to.equal(@code)
-        it ".output", -> expect(@ex.output).to.equal(@output)
-        it ".line",   -> expect(@ex.line) .to.equal(@line)
-
-        describe ".opts", ->
-
-            it "when passed an Options object", ->
-                expect(@ex.opts).to.be.instanceOf(Options).and.deep.equal(@opts)
-                expect(@ex.opts).to.not.equal(@opts)
-
-            it "when passed a plain object", ->
-                d = new Example(@args)
-                expect(d.opts).to.be.instanceOf(Options).and.deep.equal(@opts)
-                expect(d.opts).to.not.equal(@opts)
 
 
 
@@ -581,14 +540,14 @@ describe "mockdown.Example(opts)", ->
             @testOb = {}
 
             @runTest = (@ex, @testOb={}, @done = spy.named 'done') ->
-                @evaled = spy.named 'evaluate', @ex.opts, 'evaluate'
-                @checked = spy.named 'mismatch', @ex.opts, 'mismatch'
+                @evaled = spy.named 'evaluate', @ex, 'evaluate'
+                @checked = spy.named 'mismatch', @ex, 'mismatch'
                 @ex.runTest(@env, @testOb, @done)
 
             @checkRanOnce = ->
                 expect(@evaled).to.have.been.calledOnce
                 expect(@evaled).to.have.been.calledWith(@env)
-                expect(@evaled).to.have.been.calledOn(@ex.opts)
+                expect(@evaled).to.have.been.calledOn(@ex)
                 expect(@evaled.args[0][1].test).to.equal(@testOb)
                 expect(@gotOutput).to.have.been.calledOnce
                 expect(@gotOutput).to.have.been.calledAfter @evaled
@@ -818,7 +777,7 @@ describe "mockdown.Example(opts)", ->
             expect(testFn).to.have.been.calledOnce
             done()
 
-        it "creates a pending test if .opts.skip is truthy", (done) ->
+        it "creates a pending test if .skip is truthy", (done) ->
 
             ex = new Example(title: 'bar', skip: yes)
             env = new Environment()
@@ -984,16 +943,10 @@ describe "mockdown.Section(title)", ->
 
 describe "mockdown.Document(opts)", ->
 
-    beforeEach -> @c = new Document @o = new Options @a = globals: foo: 'bar'
+    beforeEach -> @c = new Document @o = new Example @a = globals: foo: 'bar'
 
-    describe "sets .opts from the given opts", ->
-        it "when passed an Options object", ->
-            expect(@c.opts).to.be.instanceOf(Options).and.not.equal(@o)
-            expect(@c.opts).to.deep.equal(@o)
-        it "when passed a plain object", ->
-            d = new Document(@a)
-            expect(d.opts).to.be.instanceOf(Options).and.not.equal(@o)
-            expect(d.opts).to.deep.equal(@o)
+    describe "gets its properties from opts, including", ->
+        checkDefaults(Document, yes)
 
     specifyContainer()
 
@@ -1022,6 +975,12 @@ describe "mockdown.Document(opts)", ->
             expect(rc).to.have.been.calledWithExactly(sf, tf, env)
             expect(env).to.be.an.instanceOf(Environment)
             expect(env.context.foo).to.exist.and.equal 'bar'
+
+
+
+
+
+
 
 describe "mockdown.lex(src)", ->
 

@@ -41,7 +41,7 @@
 
 ## Options
 
-    option_specs =
+    example_opts =
         ellipsis:
             empty.or(string) '...', "wildcard for output matching"
         ignoreWhitespace:
@@ -62,29 +62,146 @@
         ingoreUndefined: bool yes, "don't output undefined results"
         writer:
             maybe(props.function) undefined, "function used to format results"
-        
-        globals:
-            object {}, "global vars for examples", kind: "global"
 
+    document_opts =
+        filename: string '<anonymous>', "filename for stack traces"
+        globals: object {}, "global vars for examples"
         #languages:
-        #    object DEFAULT_LANGUAGES, "language specs", kind: "global", (v) ->
+        #    object DEFAULT_LANGUAGES, "language specs", (v) ->
         #        validateAndCloneLanguages(v)
 
-        filename:
-            string '<anonymous>', "filename for stack traces", kind: "private"
+    internal_opts =
         line:
-            maybe(posInt) undefined, "line number for stack traces",
-                kind: "private"
+            maybe(posInt) undefined, "line number for stack traces"
         code:
-            maybe(string) undefined, "code of the test", kind: "private"
+            maybe(string) undefined, "code of the test"
         output:
-            maybe(string) undefined, "expected output", kind: "private"
+            maybe(string) undefined, "expected output"
+        seq: maybe(int)   undefined, "an example's sequence #"
 
-    class mockdown.Options
-        Options = auto @
-        props(@, option_specs)
+
+## Containers
+
+    class Container
+
+        constructor: -> @children = []
+
+        add: (child) ->
+            @children.push child.onAdd(this)
+            this
+
+        registerChildren: (suiteFn, testFn, env) ->
+            for child in @children then child.register(suiteFn, testFn, env)
+            this
+
+### Document Objects
+
+    class mockdown.Document extends Container
+        props(@, o) for o in [example_opts, document_opts]
+
+        constructor: -> props.Base.apply(this, arguments); super
+
+        register: (suite, test, env = new mockdown.Environment @globals) ->
+            @registerChildren(suite, test, env)
+
+### Section Objects
+
+    class mockdown.Section extends Container
+
+        constructor: (@title) -> super
+
+        onAdd: (container) ->
+            if @children.length==1 and
+             (child = @children[0]) instanceof mockdown.Example
+                child.title ?= @title
+                child.onAdd(container)
+            else
+                this
+
+        register: (suiteFn, testFn, env) -> suiteFn @title, =>
+            @registerChildren(suiteFn, testFn, env)
+
+## Running Examples
+
+### Example Objects
+
+    class mockdown.Example
+        Example = auto @
+        props(@, o) for o in [example_opts, document_opts, internal_opts]
 
         constructor: -> props.Base.apply(this, arguments)
+
+        onAdd: (container) ->
+            @seq = container.children.length + 1
+            this
+
+        register: (suiteFn, testFn, env) ->
+            if @skip
+                testFn @getTitle()
+            else
+                my = this
+                testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
+
+        getTitle: ->
+            return @title if @title?
+            return m[2].trim() if m = @code?.match ///
+                ^
+                \s*
+                (//|#|--|%)
+                \s*
+                ([^\n]+)
+            ///
+            if @seq then "Example "+@seq else "Example"
+
+
+
+
+
+
+
+
+
+
+        runTest: (env, testObj, done) ->
+
+            finished = no
+
+            waiter = new mockdown.Waiter (err) =>
+                if finished
+                    done(err) if err
+                else
+                    finished = yes
+                    @writeError(env, err) if err
+                    matchErr = @mismatch(env.getOutput())
+
+                    if not matchErr
+                        done.call(null, undefined)
+                    else if not err?
+                        done.call(null, matchErr)
+                    else
+                        done.call(null, err)
+
+            testObj.callback = waiter.done
+
+            try
+                @evaluate(env, wait: waiter.wait, test: testObj)
+                waiter.done() unless waiter.waiting
+            catch e
+                if waiter.waiting
+                    @writeError(env, e)
+                else waiter.done(e)
+
+
+
+
+
+
+
+
+
+
+
+
 
         mismatch: (output) ->
             return if output is @output
@@ -119,123 +236,6 @@
             msgLines = err.message.split('\n').length
             stack = err.stack.split('\n').slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
-
-## Containers
-
-    class Container
-
-        constructor: -> @children = []
-
-        add: (child) ->
-            @children.push child.onAdd(this)
-            this
-
-        registerChildren: (suiteFn, testFn, env) ->
-            for child in @children then child.register(suiteFn, testFn, env)
-            this
-
-### Document Objects
-
-    class mockdown.Document extends Container
-
-        constructor: (opts) ->
-            @opts = mockdown.Options(opts); super
-
-        register: (suite, test, env = new mockdown.Environment @opts.globals) ->
-            @registerChildren(suite, test, env)
-
-### Section Objects
-
-    class mockdown.Section extends Container
-
-        constructor: (@title) -> super
-
-        onAdd: (container) ->
-            if @children.length==1 and
-             (child = @children[0]) instanceof mockdown.Example
-                child.title ?= @title
-                child.onAdd(container)
-            else
-                this
-
-        register: (suiteFn, testFn, env) -> suiteFn @title, =>
-            @registerChildren(suiteFn, testFn, env)
-
-## Running Examples
-
-### Example Objects
-
-    class mockdown.Example
-
-        constructor: (opts) ->
-            @opts = opts = mockdown.Options(opts)
-            @title = opts?.title
-            @code = opts?.code
-            @line = opts?.line ? 1
-            @output = opts?.output
-            @seq = undefined
-
-        onAdd: (container) ->
-            @seq = container.children.length + 1
-            this
-
-        register: (suiteFn, testFn, env) ->
-            if @opts.skip
-                testFn @getTitle()
-            else
-                my = this
-                testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
-
-        getTitle: ->
-            return @title if @title?
-            return m[2].trim() if m = @code?.match ///
-                ^
-                \s*
-                (//|#|--|%)
-                \s*
-                ([^\n]+)
-            ///
-            if @seq then "Example "+@seq else "Example"
-
-
-
-
-
-
-        runTest: (env, testObj, done) ->
-
-            finished = no
-
-            waiter = new mockdown.Waiter (err) =>
-                if finished
-                    done(err) if err
-                else
-                    finished = yes
-                    @opts.writeError(env, err) if err
-                    matchErr = @opts.mismatch(env.getOutput())
-
-                    if not matchErr
-                        done.call(null, undefined)
-                    else if not err?
-                        done.call(null, matchErr)
-                    else
-                        done.call(null, err)
-
-            testObj.callback = waiter.done
-
-            try
-                @opts.evaluate(env, wait: waiter.wait, test: testObj)
-                waiter.done() unless waiter.waiting
-            catch e
-                if waiter.waiting
-                    @opts.writeError(env, e)
-                else waiter.done(e)
-
-
-
-
-
 
 
 
