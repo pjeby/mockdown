@@ -328,10 +328,6 @@ checkDefaults = (cls, isDocument=no) ->
 
 describe "mockdown.Example(opts...)", ->
 
-    it "works with or without `new`", ->
-        expect(Example({})).to.be.instanceOf(Example)
-        .and.deep.equal new Example {}
-
     describe "gets properties from opts, including", ->
         checkDefaults Example
 
@@ -358,6 +354,10 @@ describe "mockdown.Example(opts...)", ->
             it "by passing undefined", ->
                 expect(new Example undefined, undefined)
                 .to.deep.equal new Example {}
+
+
+
+
 
 
 

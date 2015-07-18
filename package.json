@@ -35,7 +35,6 @@
     "sinon": "^1.9.1"
   },
   "dependencies": {
-    "autocreate": "^1.0.0",
     "marked": "^0.3.3",
     "mock-globals": "^0.1.0",
     "prop-schema": "^0.2.2"

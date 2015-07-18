@@ -4,7 +4,6 @@
 
     mockdown.Environment = require('mock-globals').Environment
 
-    auto = require 'autocreate'
     {string, object, empty} = props = require 'prop-schema'
 
     bool = props.integer.and((v) -> v>0).or props.boolean
@@ -17,6 +16,7 @@
         props.check "must be integer or Infinity",
             (v) -> v is Infinity
     )
+
 
 
 
@@ -126,7 +126,6 @@
 ### Example Objects
 
     class mockdown.Example
-        Example = auto @
         props(@, o) for o in [example_opts, document_opts, internal_opts]
 
         constructor: -> props.Base.apply(this, arguments)
@@ -152,6 +151,7 @@
                 ([^\n]+)
             ///
             if @seq then "Example "+@seq else "Example"
+
 
 
 
