@@ -859,9 +859,9 @@ specifyContainer = ->
 
 
 
-describe "mockdown.Section(title)", ->
+describe 'mockdown.Section({title:"..."})', ->
 
-    beforeEach -> @c = new Section("Section A")
+    beforeEach -> @c = new Section(title: "Section A")
 
     it "sets .title from the given title", ->
         expect(@c.title).to.equal('Section A')

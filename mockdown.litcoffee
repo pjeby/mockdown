@@ -17,6 +17,9 @@
             (v) -> v is Infinity
     )
 
+    mkArray = props.type (val=[]) -> [].concat(val)
+
+
     storage_opts =
 
         descriptorFor: (name, spec) ->
@@ -28,9 +31,6 @@
             configurable: yes
 
         setupStorage: ->   # no init needed
-
-
-
 
 
 
@@ -83,8 +83,9 @@
 ## Containers
 
     class Container
+        props(@, children: mkArray undefined, "contained items", storage_opts)
 
-        constructor: -> @children = []
+        constructor: props.Base
 
         add: (child) ->
             @children.push child.onAdd(this)
@@ -97,9 +98,7 @@
 ### Document Objects
 
     class mockdown.Document extends Container
-        props(@, props.assign({}, example_opts, document_opts), storage_opts)
-
-        constructor: -> props.Base.apply(this, arguments); super
+        props(@, props.assign({}, example_opts, document_opts))
 
         register: (suite, test, env = new mockdown.Environment @globals) ->
             @registerChildren(suite, test, env)
@@ -107,8 +106,7 @@
 ### Section Objects
 
     class mockdown.Section extends Container
-
-        constructor: (@title) -> super
+        props(@, title: maybe(string) undefined, "section title")
 
         onAdd: (container) ->
             if @children.length==1 and
@@ -120,6 +118,8 @@
 
         register: (suiteFn, testFn, env) -> suiteFn @title, =>
             @registerChildren(suiteFn, testFn, env)
+
+
 
 ## Running Examples
 
