@@ -17,17 +17,17 @@
             (v) -> v is Infinity
     )
 
+    storage_opts =
 
+        descriptorFor: (name, spec) ->
+            name = name + '_'   # store data in `name_`
+            
+            get: -> this[name]
+            set: (v) -> this[name] = spec.convert(v)
+            enumerable: yes
+            configurable: yes
 
-
-
-
-
-
-
-
-
-
+        setupStorage: ->   # no init needed
 
 
 
@@ -97,7 +97,7 @@
 ### Document Objects
 
     class mockdown.Document extends Container
-        props(@, o) for o in [example_opts, document_opts]
+        props(@, props.assign({}, example_opts, document_opts), storage_opts)
 
         constructor: -> props.Base.apply(this, arguments); super
 
@@ -126,7 +126,10 @@
 ### Example Objects
 
     class mockdown.Example
-        props(@, o) for o in [example_opts, document_opts, internal_opts]
+        props(@,
+            props.assign({}, example_opts, document_opts, internal_opts)
+            storage_opts
+        )
 
         constructor: -> props.Base.apply(this, arguments)
 
@@ -151,9 +154,6 @@
                 ([^\n]+)
             ///
             if @seq then "Example "+@seq else "Example"
-
-
-
 
 
 
