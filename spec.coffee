@@ -14,7 +14,7 @@ failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
-{lex, Section, Example, Environment, Document, Waiter} = require './'
+{lex, Parser, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
 
 
@@ -982,6 +982,129 @@ describe "mockdown.Document(opts)", ->
 
 
 
+describe "mockdown.Parser(docOrOpts)", ->
+
+    describe ".doc", ->
+        it "is docOrOpts if Document"
+        it "gets properties from opts... otherwise"
+
+    describe ".directiveEnv(docOrEx, allowed) returns an Environment", ->
+        it "with allowed subset of options mapped as globals"
+        it "with disallowed options raising an error"
+
+    describe ".directive(docOrEx, code, line, specs)", ->
+        it "defaults to not allowing global specs"
+        it "runs code w/filename and line number"
+        it "code can modify boolean opts using ++ and --"
+        it "code can modify options by assignment"
+
+    describe "Matching Functions", ->
+
+        describe ".match(tok, predicate)", ->
+
+            describe "with string predicate", ->
+                it "returns tok if tok.type === predicate"
+                it "returns undefined otherwise"
+
+            describe "with array predicate", ->
+                it "invokes .match() recursively for each element"
+                it "returns tok if any element matched"
+                it "returns undefined otherwise"
+
+        describe ".matchDeep(tok, pred, subpreds...)", ->
+            it "returns undefined unless .match(tok, pred)"
+            it "returns undefined if tok has more than one child"
+            it "returns recursive sub-match of predicate's child"
+
+        describe ".matchDirective(tok)", ->
+            it "rejects non-HTML tokens"
+            it "throws a SyntaxError for malformed directives"
+            it "calculates the correct line number for embedded code"
+            it "resets the token type according to directive type"
+            it "resets the token text to the directive content"
+
+    describe "Parsing Functions", ->
+
+        describe ".parseDirective(tok, haveDirective)", ->
+            it "rejects tokens that fail .matchDirective()"
+            it "only accepts plain 'mockdown' directives if haveDirective"
+
+            describe "when directive is 'mockdown'", ->
+                it "invokes .directive(.setExample(), tok.text, tok.line)"
+                it "returns .HAVE_DIRECTIVE state and sets .started"
+
+            describe "when directive is 'mockdown-set'", ->
+                it "invokes .directive(.doc, tok.text, tok.line)"
+                it "returns .SCAN state and sets .started"
+
+            describe "when directive is 'mockdown-setup'", ->
+                it "throws an error if already .started"
+                it "invokes .directive(.doc, tok.text, tok.line, specs)"
+                it "with specs that permit global options to be set"
+                it "returns .SCAN state and sets .started"
+
+        describe ".parseTitle(tok)", ->
+            it "rejects tokens without the appropriate children"
+            it "invokes .setExample(title:) with the nested text"
+            it "returns .SCAN on success"
+
+        describe ".parseHeading(tok)", ->
+            it "rejects non-headings"
+            it "sets .current to a new Section with a title"
+
+        describe ".parseCode(tok)", ->
+            it "rejects non-code tokens"
+            it "calls .setExample(code: tok.text, line: tok.line)"
+            it "sets example .language if supplied" 
+            it "returns .HAVE_CODE state and sets .started"
+
+
+
+
+
+
+
+    describe "Parser States", ->
+
+        describe ".SCAN(tok)", ->
+            it "accepts any directive and returns .HAVE_DIRECTIVE"
+            it "accepts code and returns .HAVE_CODE"
+            it "accepts titles and returns .SCAN"
+            it "accepts headings and returns .SCAN"
+            it "returns .SCAN for everything else"
+
+        describe ".HAVE_DIRECTIVE(tok)", ->
+            it "accepts plain directives and returns .HAVE_DIRECTIVE"
+            it "accepts code and returns .HAVE_CODE"
+            it "throws a SyntaxError for anything else"
+
+        describe ".HAVE_CODE(tok)", ->
+            it "accepts output and adds it to the example"
+            it "adds .example to the current doc or section"
+            it "clears the current .example"
+            it "returns .SCAN(tok)"
+
+    describe "State Management", ->
+
+        describe ".syntaxError(line, message)", ->
+            it "returns an error with file and line in its .stack"
+
+        describe ".setExample(props)", ->
+            it "returns an Example that === .example"
+            it "has the specified properties"
+            it "updates an existing .example if found"
+            it "creates a new .example if empty"
+
+    describe "Headings (.parseHeading(tok) and .finishHeadings())", ->
+    
+
+
+
+
+
+
+
+
 describe "mockdown.lex(src)", ->
 
     check = (src, out) -> lex(src).should.eql(out)
@@ -1056,7 +1179,7 @@ describe "mockdown.lex(src)", ->
           ]
         }]
 
-    it "parses mockdown directives"
+
 
 
 
