@@ -3,7 +3,9 @@ should = should()
 chai.use require 'sinon-chai'
 
 expect_fn = (item) -> expect(item).to.exist.and.be.a('function')
-{spy} = sinon = require 'sinon'
+
+{spy, stub} = sinon = require 'sinon'
+same = sinon.match.same
 
 spy.named = (name, args...) ->
     s = if this is spy then spy(args...) else this
@@ -16,8 +18,6 @@ failSafe = (done, fn) -> ->
 
 {lex, Parser, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
-
-
 
 
 
@@ -985,18 +985,84 @@ describe "mockdown.Document(opts)", ->
 describe "mockdown.Parser(docOrOpts)", ->
 
     describe ".doc", ->
-        it "is docOrOpts if Document"
-        it "gets properties from opts... otherwise"
+
+        it "is docOrOpts if Document", ->
+            expect(new Parser(d = new Document).doc)
+            .to.equal d
+
+        it "gets properties from opts... otherwise", ->
+            expect(new Parser({filename: 'foo.md'}, {stackDepth:20}).doc)
+            .to.deep.equal new Document(filename: 'foo.md', stackDepth: 20)
 
     describe ".directiveEnv(docOrEx, allowed) returns an Environment", ->
-        it "with allowed subset of options mapped as globals"
-        it "with disallowed options raising an error"
+
+        beforeEach ->
+            @p = new Parser()
+            @d = new Document
+            @e = @p.directiveEnv(@d, {stackDepth: null, ellipsis: null})
+            @c = @e.context
+
+        it "with allowed subset of options mapped as globals", ->
+            for tgt in ['c', 'd']
+                for [prop, values] in [
+                    ['stackDepth', [99,42,55]]
+                    ['ellipsis', ['foo', 'bar', 'baz']]
+                ] then for v in values
+                    @[tgt][prop] = v
+                    @c[prop].should.equal v, "c after setting #{tgt}.#{prop}"
+                    @d[prop].should.equal v, "d after setting #{tgt}.#{prop}"
+
+        it "with disallowed options raising an error", ->
+            msg = " can only be accessed via mockdown-setup"
+            (=> @c.globals).should.throw(TypeError, "globals" + msg)
+            (=> @c.skip = true).should.throw(TypeError, "skip" + msg)
+
+
+
+
+
+
 
     describe ".directive(docOrEx, code, line, specs)", ->
-        it "defaults to not allowing global specs"
-        it "runs code w/filename and line number"
-        it "code can modify boolean opts using ++ and --"
-        it "code can modify options by assignment"
+
+        beforeEach -> @p = new Parser(@d = new Document)
+
+        it "defaults to not allowing global specs", ->
+            (=> @p.directive(@d, 'globals')).should.throw(
+                TypeError, "globals can only be accessed via mockdown-setup"
+            )
+            @p.directive(@d, 'globals', 1, {globals: null})
+            .should.equal @d.globals
+
+        it "runs code w/filename and line number", ->
+            my = this
+            de = stub @p, 'directiveEnv', ->
+                e = Parser::directiveEnv.apply(this, arguments)
+                my.r = spy.named 'run', e, 'run'
+                return e
+            @p.directive(e=new Example, '1', 5, s={skip:null})
+            de.should.have.been.calledOnce
+            de.should.have.been.calledWithExactly(same(e), same(s))
+            @r.should.have.been.calledOnce
+            @r.should.have.been.calledWithExactly(
+                '\n\n\n\n1', {filename:@d.filename}
+            )
+
+        it "code can modify boolean opts using ++ and --", ->
+            e = new Example()
+            e.ignore.should.be.false
+            @p.directive(e, '++ignore')
+            e.ignore.should.be.true
+            @p.directive(e, '--ignore')
+            e.ignore.should.be.false
+
+        it "code can modify options by assignment", ->
+            @d.ellipsis.should.equal '...'
+            @p.directive(@d, "ellipsis='foo'")
+            @d.ellipsis.should.equal 'foo'
+
+
+
 
     describe "Matching Functions", ->
 
@@ -1022,6 +1088,22 @@ describe "mockdown.Parser(docOrOpts)", ->
             it "calculates the correct line number for embedded code"
             it "resets the token type according to directive type"
             it "resets the token text to the directive content"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     describe "Parsing Functions", ->
 
@@ -1055,7 +1137,7 @@ describe "mockdown.Parser(docOrOpts)", ->
         describe ".parseCode(tok)", ->
             it "rejects non-code tokens"
             it "calls .setExample(code: tok.text, line: tok.line)"
-            it "sets example .language if supplied" 
+            it "sets example .language if supplied"
             it "returns .HAVE_CODE state and sets .started"
 
 
@@ -1096,7 +1178,7 @@ describe "mockdown.Parser(docOrOpts)", ->
             it "creates a new .example if empty"
 
     describe "Headings (.parseHeading(tok) and .finishHeadings())", ->
-    
+
 
 
 

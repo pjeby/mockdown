@@ -18,8 +18,8 @@
     )
 
     mkArray = props.type (val=[]) -> [].concat(val)
-
     splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
+    offset =  (code, line) -> Array(line).join('\n') + code
 
     injectStack = (err, txt) ->
         stack = splitLines(err.stack)
@@ -220,7 +220,7 @@
             err.actual = actual
             return injectStack(err, "  at Example (#{@filename}:#{@line})")
 
-        offset: (code=@code, line=@line) -> Array(line).join('\n') + code
+        offset: (code=@code, line=@line) -> offset(code, line)
 
         evaluate: (env, params) ->
             if params
@@ -319,6 +319,47 @@ predicate returns true, or given thenable resolves or rejects.
                 catch e
                     @done(e)
             ), interval
+
+
+
+
+
+
+
+## Parsing
+
+### The Parser
+
+    class mockdown.Parser
+
+        constructor:  ->
+            if arguments.length == 1 and
+                arguments[0] instanceof mockdown.Document
+                    @doc = arguments[0]
+            else @doc = new mockdown.Document(arguments...)
+
+        directive: (ob, code, line, specs=example_specs) ->
+            @directiveEnv(ob, specs).run(
+                offset(code, line), filename: @doc.filename
+            )
+
+        directiveEnv: (ob, allowed) ->
+            ctx = (env = new mockdown.Environment).context
+            Object.keys(document_specs).forEach (name) ->
+                msg = name+" can only be accessed via mockdown-setup"
+                err = -> throw new TypeError(msg)
+                descr = get: err, set: err
+    
+                if allowed.hasOwnProperty(name)
+                    descr.set = (val) -> ob[name] = val
+                    descr.get = -> ob[name]
+    
+                Object.defineProperty(ctx, name, descr)
+            return env
+
+
+
+
 
 
 
