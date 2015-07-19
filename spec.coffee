@@ -12,16 +12,16 @@ spy.named = (name, args...) ->
     s.displayName = name
     return s
 
+withSpy = (ob, name, fn) ->
+    s = spy.named name, ob, name
+    try fn(s) finally s.restore()
+
 failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
 {lex, Parser, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
-
-
-
-
 
 
 
@@ -984,11 +984,12 @@ describe "mockdown.Document(opts)", ->
 
 describe "mockdown.Parser(docOrOpts)", ->
 
+    beforeEach -> @p = new Parser(@d = new Document)
+
     describe ".doc", ->
 
         it "is docOrOpts if Document", ->
-            expect(new Parser(d = new Document).doc)
-            .to.equal d
+            expect(@p.doc).to.equal @d
 
         it "gets properties from opts... otherwise", ->
             expect(new Parser({filename: 'foo.md'}, {stackDepth:20}).doc)
@@ -997,7 +998,6 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe ".directiveEnv(docOrEx, allowed) returns an Environment", ->
 
         beforeEach ->
-            @p = new Parser()
             @d = new Document
             @e = @p.directiveEnv(@d, {stackDepth: null, ellipsis: null})
             @c = @e.context
@@ -1069,36 +1069,77 @@ describe "mockdown.Parser(docOrOpts)", ->
         describe ".match(tok, predicate)", ->
 
             describe "with string predicate", ->
-                it "returns tok if tok.type === predicate"
-                it "returns undefined otherwise"
+                it "returns tok if tok.type === predicate", ->
+                    expect(@p.match(tok = type: 'foo', 'foo')).to.equal tok
+
+                it "returns undefined otherwise", ->
+                    expect(@p.match(type: 'foo', 'bar')).not.to.exist
 
             describe "with array predicate", ->
-                it "invokes .match() recursively for each element"
-                it "returns tok if any element matched"
-                it "returns undefined otherwise"
+                it "invokes .match() recursively for each element", ->
+                    withSpy @p, 'match', (m) =>
+                        res = @p.match(tok = type: 'baz', ['foo', 'bar'])
+                        expect(res).not.to.exist
+                        m.should.have.been.calledThrice
+                        m.should.have.been.calledWithExactly(same(tok), 'foo')
+                        m.should.have.been.calledWithExactly(same(tok), 'bar')
+
+                it "returns tok if any element matched", ->
+                    res = @p.match(tok = type: 'baz', ['foo', 'baz'])
+                    expect(res).to.equal tok
+
+                it "returns undefined otherwise", ->
+                    res = @p.match(tok = type: 'bar', ['foo', 'baz'])
+                    expect(res).to.not.exist
 
         describe ".matchDeep(tok, pred, subpreds...)", ->
-            it "returns undefined unless .match(tok, pred)"
-            it "returns undefined if tok has more than one child"
-            it "returns recursive sub-match of predicate's child"
+            it "returns undefined unless .match(tok, pred)", ->
+                expect(@p.matchDeep(tok=type:'foo', 'foo')).to.equal tok
+                expect(@p.matchDeep(tok=type:'foo', ['bar'])).to.not.exist
+
+            it "returns undefined if tok has more than one child", ->
+                tok = type: 'foo', children: [{type:'a'}, {type:'b'}]
+                expect(@p.matchDeep(tok, 'foo', 'a')).to.not.exist
+
+            it "returns recursive sub-match of predicate's child", ->
+                t1 = type: 'foo', children: [t2=type:'bar']
+                expect(@p.matchDeep(t1, 'foo', 'bar')).to.equal t2
 
         describe ".matchDirective(tok)", ->
-            it "rejects non-HTML tokens"
-            it "throws a SyntaxError for malformed directives"
-            it "calculates the correct line number for embedded code"
-            it "resets the token type according to directive type"
-            it "resets the token text to the directive content"
 
+            before -> @md = (text, line=1) =>
+                @p.matchDirective {text, line, type: 'html'}
 
+            it "rejects non-HTML tokens", ->
+                expect(@p.matchDirective type:'bar').to.not.exist
 
+            it "rejects tokens w/out '<!--' and 'mockdown' ", ->
+                expect(@md('<!-- -->')).to.not.exist
 
+            it "throws a SyntaxError for malformed directives", ->
+                for bad in [
+                    '<!-- mockdown -->  blah'
+                    'blah <!-- mockdown: foo -->'
+                    '<!-- mockdown-foo: bar -->'
+                ]
+                    (=> @md(bad))
+                    .should.throw SyntaxError, "malformed mockdown directive"
 
+                    try @md('\n'+bad, 5) catch err
+                        expect(err.stack.split('\n')[1])
+                        .to.equal "  at (<anonymous>:6)"
 
+            it "calculates the correct line number for embedded code", ->
+                expect(@md("<!-- mockdown: x-->").line).to.equal 1
+                expect(@md("\n<!-- mockdown: x-->").line).to.equal 2
+                expect(@md("\n<!-- \nmockdown: x-->").line).to.equal 3
 
+            it "resets the token type according to directive type", ->
+                for kind in ['mockdown', 'mockdown-set', 'mockdown-setup']
+                    expect(@md("<!-- #{kind}: x -->").type).to.equal kind
 
-
-
-
+            it "resets the token text to the directive content", ->
+                expect(@md("<!-- mockdown:whee-->").text).to.equal 'whee'
 
 
 
@@ -1169,7 +1210,13 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe "State Management", ->
 
         describe ".syntaxError(line, message)", ->
-            it "returns an error with file and line in its .stack"
+
+            it "returns an error with file and line in its .stack", ->
+                @d.filename = 'bar.md'
+                err = @p.syntaxError(42, "what\nup")
+                expect(err.stack.split('\n')[2]).to.equal "  at (bar.md:42)"
+                expect(err.message).to.equal 'what\nup'
+
 
         describe ".setExample(props)", ->
             it "returns an Example that === .example"
@@ -1178,12 +1225,6 @@ describe "mockdown.Parser(docOrOpts)", ->
             it "creates a new .example if empty"
 
     describe "Headings (.parseHeading(tok) and .finishHeadings())", ->
-
-
-
-
-
-
 
 
 

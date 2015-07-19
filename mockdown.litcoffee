@@ -26,12 +26,12 @@
         stack.splice(splitLines(err.message).length, 0, txt)
         err.stack = stack.join('\n')
         return err
-            
+
     storage_opts =
 
         descriptorFor: (name, spec) ->
             name = name + '_'   # store data in `name_`
-            
+
             get: -> this[name]
             set: (v) -> this[name] = spec.convert(v)
             enumerable: yes
@@ -70,7 +70,7 @@
         #    object DEFAULT_LANGUAGES, "language specs", (v) ->
         #        validateAndCloneLanguages(v)
 
-    internal_specs = props.assign {}, document_specs, 
+    internal_specs = props.assign {}, document_specs,
         line:
             maybe(posInt) undefined, "line number for stack traces"
         code:
@@ -338,6 +338,56 @@ predicate returns true, or given thenable resolves or rejects.
                     @doc = arguments[0]
             else @doc = new mockdown.Document(arguments...)
 
+        match: (tok, pred) ->
+            if typeof pred is 'string'
+                return tok if tok.type == pred
+            else
+                for p in pred
+                    t = @match(tok, p)
+                    return t if t?
+            return
+
+        matchDeep: (tok, pred, subpreds...) ->
+            return unless (tok = @match(tok, pred))?
+            return tok unless subpreds.length
+            return unless tok.children?.length == 1
+            return @matchDeep(tok.children[0], subpreds...)
+
+        syntaxError: (line, message) -> injectStack(
+            new SyntaxError(message), "  at (#{@doc.filename}:#{line})"
+        )
+
+
+
+
+
+
+
+
+
+
+
+#### Directives
+
+        directiveStart = /// ^ ([\S\s]* <!-- \s*) mockdown ///
+
+        validDirective = ///
+        ^ \s* <!-- \s* (mockdown (?:-set|-setup|)) :
+        ( (?: [^-] | -(?!->) )* ) --> \s* $ ///
+
+        matchDirective: (tok) ->
+            return unless tok.type is 'html'
+            return unless match = tok.text.match(directiveStart)
+
+            [all, prefix] = match
+            tok.line += splitLines(prefix).length - 1
+
+            unless match = tok.text.match(validDirective)
+                throw @syntaxError(tok.line, "malformed mockdown directive")
+
+            [all, tok.type, tok.text] = match
+            return tok
+
         directive: (ob, code, line, specs=example_specs) ->
             @directiveEnv(ob, specs).run(
                 offset(code, line), filename: @doc.filename
@@ -349,22 +399,13 @@ predicate returns true, or given thenable resolves or rejects.
                 msg = name+" can only be accessed via mockdown-setup"
                 err = -> throw new TypeError(msg)
                 descr = get: err, set: err
-    
+
                 if allowed.hasOwnProperty(name)
                     descr.set = (val) -> ob[name] = val
                     descr.get = -> ob[name]
-    
+
                 Object.defineProperty(ctx, name, descr)
             return env
-
-
-
-
-
-
-
-
-
 
 
 ### Markdown Lexical Analysis
