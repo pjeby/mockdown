@@ -19,7 +19,14 @@
 
     mkArray = props.type (val=[]) -> [].concat(val)
 
+    splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
 
+    injectStack = (err, txt) ->
+        stack = splitLines(err.stack)
+        stack.splice(splitLines(err.message).length, 0, txt)
+        err.stack = stack.join('\n')
+        return err
+            
     storage_opts =
 
         descriptorFor: (name, spec) ->
@@ -32,16 +39,9 @@
 
         setupStorage: ->   # no init needed
 
-
-
-
-
-
-
-
 ## Options
 
-    example_opts =
+    example_specs =
         ellipsis:
             empty.or(string) '...', "wildcard for output matching"
         ignoreWhitespace:
@@ -63,14 +63,14 @@
         writer:
             maybe(props.function) undefined, "function used to format results"
 
-    document_opts =
+    document_specs = props.assign {}, example_specs,
         filename: string '<anonymous>', "filename for stack traces"
         globals: object {}, "global vars for examples"
         #languages:
         #    object DEFAULT_LANGUAGES, "language specs", (v) ->
         #        validateAndCloneLanguages(v)
 
-    internal_opts =
+    internal_specs = props.assign {}, document_specs, 
         line:
             maybe(posInt) undefined, "line number for stack traces"
         code:
@@ -98,7 +98,7 @@
 ### Document Objects
 
     class mockdown.Document extends Container
-        props(@, props.assign({}, example_opts, document_opts))
+        props(@, document_specs)
 
         register: (suite, test, env = new mockdown.Environment @globals) ->
             @registerChildren(suite, test, env)
@@ -126,10 +126,8 @@
 ### Example Objects
 
     class mockdown.Example
-        props(@,
-            props.assign({}, example_opts, document_opts, internal_opts)
-            storage_opts
-        )
+
+        props(@, internal_specs, storage_opts)
 
         constructor: -> props.Base.apply(this, arguments)
 
@@ -154,6 +152,8 @@
                 ([^\n]+)
             ///
             if @seq then "Example "+@seq else "Example"
+
+
 
 
 
@@ -208,21 +208,17 @@
             msg = ['']
             if @showOutput
                 msg.push 'Code:'
-                msg.push '    '+l for l in (@code ? '').split('\n')
+                msg.push '    '+l for l in splitLines(@code ? '')
                 msg.push 'Expected:'
-                msg.push '>     '+l for l in expected = @output.split('\n')
+                msg.push '>     '+l for l in expected = splitLines(@output)
                 msg.push 'Got:'
-                msg.push '>     '+l for l in actual = output.split('\n')
+                msg.push '>     '+l for l in actual = splitLines(output)
             err = new Error(msg.join('\n'))
             err.name = 'Failed example'
             err.showDiff = @showDiff
             err.expected = expected
             err.actual = actual
-            stack = err.stack.split('\n')
-            stack.splice(msg.length, 0, "  at Example (#{@filename}:#{@line})")
-            err.stack = stack.join('\n')
-            return err
-
+            return injectStack(err, "  at Example (#{@filename}:#{@line})")
 
         offset: (code=@code, line=@line) -> Array(line).join('\n') + code
 
@@ -233,9 +229,13 @@
             return env.run(@offset(), this)
 
         writeError: (env, err) ->
-            msgLines = err.message.split('\n').length
-            stack = err.stack.split('\n').slice(0, @stackDepth + msgLines)
+            msgLines = splitLines(err.message).length
+            stack = splitLines(err.stack).slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
+
+
+
+
 
 
 
@@ -378,7 +378,7 @@ pattern, so we have to leave that one alone.)
             if re instanceof RegExp and name isnt 'item'
                 rules[name] = do (re) -> exec: ->
                     if (last_match = re.exec(arguments...))
-                        nextLine = line + last_match[0].split('\n').length - 1
+                        nextLine = line + splitLines(last_match[0]).length - 1
 
                         # Special case: marked ignores single newlines, but we
                         # need to count them to keep line numbers aligned
