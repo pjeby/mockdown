@@ -367,6 +367,47 @@ predicate returns true, or given thenable resolves or rejects.
 
 
 
+#### Parsing States
+
+        SCAN: (tok) ->
+            @parseDirective(tok, no) or @parseCode(tok) or @parseTitle(tok) or
+            @parseHeading(tok) or @SCAN
+
+        #HAVE_DIRECTIVE: (tok) ->
+
+        HAVE_CODE: (tok) ->
+            @example = undefined
+            return @SCAN(tok)
+
+        setExample: (data) ->
+            return props.assign(@example, data) if @example?
+            @example ?= new mockdown.Example(data, @doc)
+
+#### Parsing Rules
+
+        parseCode: (tok) ->
+            return unless tok.type is 'code'
+            @setExample(line: tok.line, code: tok.text)
+            @example.language = tok.lang if tok.lang?
+            @started = yes
+            return @HAVE_CODE
+
+        parseTitle: (tok) -> #@SCAN
+        parseDirective: (tok) -> #@HAVE_DIRECTIVE
+        parseHeading: (tok) -> #@SCAN
+
+
+
+
+
+
+
+
+
+
+
+
+
 #### Directives
 
         directiveStart = /// ^ ([\S\s]* <!-- \s*) mockdown ///

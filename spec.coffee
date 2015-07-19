@@ -7,6 +7,8 @@ expect_fn = (item) -> expect(item).to.exist.and.be.a('function')
 {spy, stub} = sinon = require 'sinon'
 same = sinon.match.same
 
+{assign} = require 'prop-schema'
+
 spy.named = (name, args...) ->
     s = if this is spy then spy(args...) else this
     s.displayName = name
@@ -22,8 +24,6 @@ failSafe = (done, fn) -> ->
 
 {lex, Parser, Section, Example, Environment, Document, Waiter} = require './'
 util = require 'util'
-
-
 
 
 
@@ -1175,11 +1175,52 @@ describe "mockdown.Parser(docOrOpts)", ->
             it "rejects non-headings"
             it "sets .current to a new Section with a title"
 
+
+
+
+
+
+
+
+
+
+
+
+
         describe ".parseCode(tok)", ->
-            it "rejects non-code tokens"
-            it "calls .setExample(code: tok.text, line: tok.line)"
-            it "sets example .language if supplied"
-            it "returns .HAVE_CODE state and sets .started"
+
+            before -> @pc = (text, extras) =>
+                @p.parseCode(
+                    assign {text, line:1, type: 'code'}, extras
+                )
+
+            it "rejects non-code tokens", ->
+                expect(@pc('', type: 'foo')).to.not.exist
+
+            it "calls .setExample(code: tok.text, line: tok.line)", ->
+                withSpy @p, 'setExample', (se) =>
+                    @pc('some(code)', line:42)
+                    se.should.have.been.calledOnce
+                    se.should.have.been.calledWithExactly(
+                        code: 'some(code)', line:42
+                    )
+
+            it "sets .example.language if supplied", ->
+                @pc('allTheCodez')
+                expect(@p.example?.language).to.not.equal 'C'
+                @pc('allTheCodez', lang: 'C')
+                expect(@p.example?.language).to.equal 'C'
+
+            it "returns .HAVE_CODE state and sets .started", ->
+                expect(@p.started).to.not.be.true
+                expect(@pc('42', line:55)).to.equal @p.HAVE_CODE
+                expect(@p.started).to.be.true
+
+
+
+
+
+
 
 
 
@@ -1190,22 +1231,84 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe "Parser States", ->
 
         describe ".SCAN(tok)", ->
-            it "accepts any directive and returns .HAVE_DIRECTIVE"
-            it "accepts code and returns .HAVE_CODE"
-            it "accepts titles and returns .SCAN"
-            it "accepts headings and returns .SCAN"
-            it "returns .SCAN for everything else"
+            it "invokes and returns .parseDirective() for any directive"
+            it "accepts code and returns .parseCode(tok)"
+            it "accepts titles and returns .parseTitle(tok)"
+            it "accepts headings and returns .parseHeading(tok)"
+
+            it "returns .SCAN for everything else", ->
+                tok = type: 'list'
+                shouldHaveTried = (s, args...) ->
+                    s.should.have.been.calledOnce
+                    s.should.have.been.calledWithExactly(same(tok), args...)
+
+                withSpy @p, 'parseDirective', (pd) =>
+                    withSpy @p, 'parseCode', (pc) =>
+                        withSpy @p, 'parseTitle', (pt) =>
+                            withSpy @p, 'parseHeading', (ph) =>
+                                expect(@p.SCAN tok).to.equal @p.SCAN
+                                shouldHaveTried(pd, no)
+                                shouldHaveTried(pc)
+                                shouldHaveTried(pt)
+                                shouldHaveTried(ph)
 
         describe ".HAVE_DIRECTIVE(tok)", ->
             it "accepts plain directives and returns .HAVE_DIRECTIVE"
             it "accepts code and returns .HAVE_CODE"
             it "throws a SyntaxError for anything else"
 
+
+
+
+
+
+
+
+
+
+
+
+
         describe ".HAVE_CODE(tok)", ->
+
+            beforeEach -> @ex = @p.example = new Example
+
             it "accepts output and adds it to the example"
             it "adds .example to the current doc or section"
-            it "clears the current .example"
-            it "returns .SCAN(tok)"
+            it "unless the example should be ignored"
+
+            it "clears the current .example", ->
+                @p.HAVE_CODE(type: 'text')
+                expect(@p.example).to.not.exist
+
+            it "returns .SCAN(tok)", ->
+                withSpy @p, 'SCAN', (s) =>
+                    res = @p.HAVE_CODE(tok = type: 'text')
+                    s.should.have.been.calledOnce
+                    s.should.have.been.calledWithExactly(tok)
+                    s.returnValues[0].should.equal res
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     describe "State Management", ->
 
@@ -1217,14 +1320,34 @@ describe "mockdown.Parser(docOrOpts)", ->
                 expect(err.stack.split('\n')[2]).to.equal "  at (bar.md:42)"
                 expect(err.message).to.equal 'what\nup'
 
+        describe ".setExample(opts)", ->
 
-        describe ".setExample(props)", ->
-            it "returns an Example that === .example"
-            it "has the specified properties"
-            it "updates an existing .example if found"
-            it "creates a new .example if empty"
+            before -> @se = => @p.setExample(arguments...)
+
+            it "returns an Example that === .example", ->
+                expect(@p.example).to.not.exist
+                expect(e = @se()).to.equal @p.example
+                expect(e).to.be.instanceOf Example
+
+            it "has the specified options", ->
+                expect(@se(line:55).line).to.equal 55
+
+            it "includes properties from the .doc", ->
+                @d.filename = 'bar.md'
+                expect(@se().filename).to.equal 'bar.md'
+
+            it "updates an existing .example if present", ->
+                @p.example = e = new Example line: 99, filename: 'foo'
+                expect(@se(filename:'bar' )).to.equal e
+                expect(@p.example).to.equal e
+                expect(e.filename).to.equal 'bar'
+
 
     describe "Headings (.parseHeading(tok) and .finishHeadings())", ->
+
+
+
+
 
 
 
