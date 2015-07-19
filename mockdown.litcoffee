@@ -350,13 +350,13 @@ predicate returns true, or given thenable resolves or rejects.
         matchDeep: (tok, pred, subpreds...) ->
             return unless (tok = @match(tok, pred))?
             return tok unless subpreds.length
-            return unless tok.children?.length == 1
-            return @matchDeep(tok.children[0], subpreds...)
+            children = (c for c in tok.children ? [] when c.type isnt 'space')
+            return unless children.length == 1
+            return @matchDeep(children[0], subpreds...)
 
         syntaxError: (line, message) -> injectStack(
             new SyntaxError(message), "  at (#{@doc.filename}:#{line})"
         )
-
 
 
 
@@ -392,13 +392,13 @@ predicate returns true, or given thenable resolves or rejects.
             @started = yes
             return @HAVE_CODE
 
-        parseTitle: (tok) -> #@SCAN
+        parseTitle: (tok) ->
+            return unless t = @matchDeep(tok, 'list', 'list_item', 'text')
+            @setExample(title: t.text)
+            return @SCAN
+
         parseDirective: (tok) -> #@HAVE_DIRECTIVE
         parseHeading: (tok) -> #@SCAN
-
-
-
-
 
 
 

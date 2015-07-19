@@ -984,6 +984,11 @@ describe "mockdown.Document(opts)", ->
 
 describe "mockdown.Parser(docOrOpts)", ->
 
+    mkTitle = (text) ->
+        type: 'list', ordered: no, children: [
+            type: 'list_item', children: [type: 'text', text: text]
+        ]
+
     beforeEach -> @p = new Parser(@d = new Document)
 
     describe ".doc", ->
@@ -1016,11 +1021,6 @@ describe "mockdown.Parser(docOrOpts)", ->
             msg = " can only be accessed via mockdown-setup"
             (=> @c.globals).should.throw(TypeError, "globals" + msg)
             (=> @c.skip = true).should.throw(TypeError, "skip" + msg)
-
-
-
-
-
 
 
     describe ".directive(docOrEx, code, line, specs)", ->
@@ -1067,11 +1067,9 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe "Matching Functions", ->
 
         describe ".match(tok, predicate)", ->
-
             describe "with string predicate", ->
                 it "returns tok if tok.type === predicate", ->
                     expect(@p.match(tok = type: 'foo', 'foo')).to.equal tok
-
                 it "returns undefined otherwise", ->
                     expect(@p.match(type: 'foo', 'bar')).not.to.exist
 
@@ -1083,27 +1081,29 @@ describe "mockdown.Parser(docOrOpts)", ->
                         m.should.have.been.calledThrice
                         m.should.have.been.calledWithExactly(same(tok), 'foo')
                         m.should.have.been.calledWithExactly(same(tok), 'bar')
-
                 it "returns tok if any element matched", ->
                     res = @p.match(tok = type: 'baz', ['foo', 'baz'])
                     expect(res).to.equal tok
-
                 it "returns undefined otherwise", ->
                     res = @p.match(tok = type: 'bar', ['foo', 'baz'])
                     expect(res).to.not.exist
 
         describe ".matchDeep(tok, pred, subpreds...)", ->
+
             it "returns undefined unless .match(tok, pred)", ->
                 expect(@p.matchDeep(tok=type:'foo', 'foo')).to.equal tok
                 expect(@p.matchDeep(tok=type:'foo', ['bar'])).to.not.exist
 
-            it "returns undefined if tok has more than one child", ->
+            it "returns undefined if tok has more than one non-space child", ->
                 tok = type: 'foo', children: [{type:'a'}, {type:'b'}]
                 expect(@p.matchDeep(tok, 'foo', 'a')).to.not.exist
+                tok = type: 'foo', children: [c = {type:'a'}, {type:'space'}]
+                expect(@p.matchDeep(tok, 'foo', 'a')).to.equal c
 
             it "returns recursive sub-match of predicate's child", ->
                 t1 = type: 'foo', children: [t2=type:'bar']
                 expect(@p.matchDeep(t1, 'foo', 'bar')).to.equal t2
+
 
         describe ".matchDirective(tok)", ->
 
@@ -1166,14 +1166,55 @@ describe "mockdown.Parser(docOrOpts)", ->
                 it "with specs that permit global options to be set"
                 it "returns .SCAN state and sets .started"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         describe ".parseTitle(tok)", ->
-            it "rejects tokens without the appropriate children"
-            it "invokes .setExample(title:) with the nested text"
-            it "returns .SCAN on success"
+
+            it "rejects tokens without the appropriate children", ->
+                expect(@p.parseTitle type:'list').to.not.exist
+                expect(@p.parseTitle type:'list', children: [type:'list_item'])
+                .to.not.exist
+
+            it "invokes .setExample(title:) with the nested text", ->
+                withSpy @p, 'setExample', (se) =>
+                    @p.parseTitle(mkTitle('Some text'))
+                    se.should.have.been.calledOnce
+                    se.should.have.been.calledWithExactly(title: 'Some text')
+
+            it "returns .SCAN on success", ->
+                expect(@p.parseTitle(mkTitle('foo'))).to.equal @p.SCAN
+
 
         describe ".parseHeading(tok)", ->
             it "rejects non-headings"
             it "sets .current to a new Section with a title"
+
+
+
+
+
+
+
+
 
 
 
@@ -1231,13 +1272,21 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe "Parser States", ->
 
         describe ".SCAN(tok)", ->
-            it "invokes and returns .parseDirective() for any directive"
+            it "returns .parseDirective(tok, no) for any directive"
             it "accepts code and returns .parseCode(tok)"
-            it "accepts titles and returns .parseTitle(tok)"
+
+            it "accepts titles and returns .parseTitle(tok)", ->
+                withSpy @p, 'parseTitle', (pt) =>
+                    res = @p.SCAN mkTitle 'XYZ'
+                    pt.should.have.been.calledOnce
+                    pt.returnValues[0].should.equal res
+
             it "accepts headings and returns .parseHeading(tok)"
 
             it "returns .SCAN for everything else", ->
+
                 tok = type: 'list'
+
                 shouldHaveTried = (s, args...) ->
                     s.should.have.been.calledOnce
                     s.should.have.been.calledWithExactly(same(tok), args...)
@@ -1253,17 +1302,9 @@ describe "mockdown.Parser(docOrOpts)", ->
                                 shouldHaveTried(ph)
 
         describe ".HAVE_DIRECTIVE(tok)", ->
-            it "accepts plain directives and returns .HAVE_DIRECTIVE"
+            it "returns .parseDirective(tok, yes) for plain directives"
             it "accepts code and returns .HAVE_CODE"
             it "throws a SyntaxError for anything else"
-
-
-
-
-
-
-
-
 
 
 
