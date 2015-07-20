@@ -94,42 +94,38 @@ If you don't include all five spaces, the markdown parser will see the blockquot
 
 ### Mocha Test Titles
 
-Tests can optionally be preceded by a bulleted title, like this:
-
-* This will show up as the mocha test title
+If your code sample's first non-blank line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language, it'll be used as the test's title, e.g.:
 
 ```javascript
-{ /* We're not testing anything here except the test title! */ }
+// This will show up as the mocha test title
+
+{ /* We're not testing anything here except the test title */ }
 ```
 
-Or, if your code sample's first line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language, it'll be used as the test's title, e.g.:
+Or, if the code sample doesn't start with a line comment, but it's the only code sample within a given suite, it'll replace the suite and assume its title.  (In other words, if you have only one code sample and no subheadings under a given markdown heading, then the test will get its title from the heading.)
 
-```javascript
-// This will also show up as a test title
-
-{ /* and we're still not really testing anything! */ }
-```
-
-Or, if you haven't given the code sample an explicit title in either of these ways, but it's the only code sample within a suite, the suite will be replaced with the single test, and the test will take the suite's previous title.  (In other words, if a test is the only thing under a given markdown section heading, it'll take the heading as a title.)
-
-Finally, if a test doesn't get a title from any of the above sources, it'll end up with a title of "Example N", where N is its sequence number within the current suite.
+If there's more than one code sample under a given heading, or if there are subheadings under that heading, then any otherwise-untitled tests will be titled "Example N at line M", where N is its sequence number within its suite, and M is the line number of its first code line.
 
 ### Output Matching
 
-Code samples are run in a virtual environment with a simulated console, using the [`mock-globals`](https://npmjs.com/package/mock-globals) module.  Anything that a code sample outputs via `console.log`, `console.dir`, etc. will be sent to the console's output record, which is then compared against the expected output at the end of each test run.
+Code samples are run in a virtual environment with a simulated console, using the [`mock-globals`](https://npmjs.com/package/mock-globals) module.  Anything that a code sample outputs via `console.log`, `console.error`, etc. will be sent to the console's output record, which is then compared against the expected output at the end of each code sample's execution.
 
-If the output doesn't match the expected output, the test will fail with a detailed error message showing the actual and expected output (unless you suppress it by changing the relevant options.)
+If the output doesn't match the expected output, the corresponding test will fail with a detailed error message showing the actual and expected output (unless you suppress it by changing the relevant options.)
 
-By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different values to the API, or by using directives.)
+By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different `options` to the API, or by using directives, as will be described in later sections below.)
 
-### Error Handling
+### Error Output
 
-You can include error output in your samples.  Only the message itself will be printed to the virtual console, unless you have a non-zero `stackDepth` option set (via the API or an in-document directive).
+You can include error output in your samples, if the purpose of the example is to show an error.  Only the error message itself will be printed to the virtual console, unless you have a non-zero `stackDepth` option set (via the API or an in-document directive).
+
+So, the following example throws an error, but since an error is the *intended* result, the **test** will be still considered successful: 
 
 ```javascript
 throw new Error("this is the message")
 ```
 >     Error: this is the message
+
+If the error name or message had differed, the test would fail instead.
 
 ### Asynchronous Tests
 
@@ -141,11 +137,11 @@ If you are working with promises instead, you can call `wait(aPromise)` to make 
 
 If you have neither a callback-taking function or a promise, you can still use `wait(timeout)` to wait the specified number of milliseconds, `wait(aFunction)` to call `aFunction()` every millisecond until it returns true, or `wait(interval, aFunction)` to do the same thing with a specified number of milliseconds between checks.
 
-(By the way, if you need `wait()` to have a different name because you need to use the name `wait` for something else in your examples, you can rename it by changing the `waitName` option in a directive, or in the options you supply to the mockdown API.  See the "Options Reference" and the section on using directives for more details.)
+(By the way, if you need `wait()` to have a different name because you need to use the name `wait` for something else in your examples, you can rename it by changing the `waitName` option in a directive, or in the options you supply to the mockdown API.  See the sections below for more details.)
 
 ### Controlling Test Execution with Directives
 
-Sometimes, you need to have mocha skip a test and mark it pending.  Other times, you may have code blocks in your documentation that you don't want to treat as tests at all!  You can use **directives** to control these things, as well as setting other options.   For example, to skip a single test and mark it pending, you can use:
+Sometimes, you need to have mocha skip a test and mark it pending.  Other times, you may have code blocks in your documentation that you don't want to treat as tests at all!  You can use **directives** to control these things, as well as to set other options like `waitName` or `printResults`.   For example, to skip a single test and mark it pending, you can use:
 
 <!--mockdown-set: ++ignore -->
 
@@ -161,7 +157,7 @@ Or to treat the next code block as a non-test code block, you can use:
 
 If you want to mark *multiple* tests to skip or code blocks to ignore, you can bracket them with a pair of `mockdown-set` directives, like so:
 
-```html
+```
 <!-- mockdown-set: ++skip -->
 
 Tests between these directives will be marked
@@ -170,9 +166,13 @@ Tests between these directives will be marked
 <!-- mockdown-set: --skip -->
 ```
 
-The difference between a `mockdown` directive and a `mockdown-set` one is that `mockdown` only affects the *next* code block encountered, while `mockdown-set` changes the current *default* options for the document.
+The main difference between a `mockdown` directive and a `mockdown-set` one is that `mockdown` only affects the *next* code block encountered, while `mockdown-set` changes the current *default* options for the document.
 
 So, anything you set with `mockdown-set` will *stay* set, until you change it with another `mockdown-set` -- even if it's temporarily overridden for one test with a `mockdown` directive.  (This makes it easy to change an option for just one test, because you don't have to remember to change things *back* afterwards: just use a `mockdown` directive for anything that should apply to just one test.)
+
+(One other important difference between `mockdown` and `mockdown-set` directives is that `mockdown` directives must appear *immediately* before the code blocks they affect, without any other text or non-`mockdown` directives in between.  Otherwise, parsing of the document will fail with a `SyntaxError`, to avoid any ambiguity as to the intended effects.)
+
+### Setting Options With Directives
 
 Directives aren't limited to toggling boolean flags like `skip` and `ignore`.  You can also set non-boolean options values (e.g. `<!-- mockdown: stackDepth = 3 -->`) and even combine multiple option changes in a single directive, e.g.:
 
@@ -205,7 +205,7 @@ An object containing the pseudo-global variables that will initialize the `mock-
 
 ##### `waitName` 
 
-The name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If this option is set to null or undefined, the `wait()` function will not be accessible from the example.  String or undefined, default: `"wait"`.
+The name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If this option is set to null or undefined, the `wait()` function will not be accessible from the example.  String or null/undefined, default: `"wait"`.
 
 ##### `testName` 
 

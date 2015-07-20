@@ -500,11 +500,12 @@ describe "mockdown.Example(opts...)", ->
             ex = new Example
             expect(ex.getTitle()).to.equal 'Example'
 
-        it "returns 'Example N' where N is its position in a container", ->
+        it "returns 'Example N at line M'", ->
             (ex = new Example).onAdd(children: [])
             expect(ex.getTitle()).to.equal 'Example 1'
+            ex.line = 12
             ex.onAdd(children: [42])
-            expect(ex.getTitle()).to.equal 'Example 2'
+            expect(ex.getTitle()).to.equal 'Example 2 at line 12'
 
         describe "extracts a title from a first code line comment", ->
             for cmt in ['//', '#', '--','%'] then it "using #{cmt}", ->
@@ -516,7 +517,6 @@ describe "mockdown.Example(opts...)", ->
                 ex = new Example code: """\
                     Not! #{cmt} An example using #{cmt} as a delimiter"""
                 expect(ex.getTitle()).to.equal("Example")
-
 
 
 
@@ -836,7 +836,7 @@ specifyContainer = ->
             expect(@c.children).to.deep.equal []
             @c.add(onAdd: ->); @c.add(onAdd: -> null)
             expect(@c.children).to.deep.equal []
-                        
+
         it "returns this", ->
             expect(@c.add({onAdd:->this})).to.equal @c
 
@@ -885,7 +885,7 @@ describe 'mockdown.Section({title:"..."})', ->
                 it "returns example.onAdd(container) in place of itself", ->
                     expect(@c.onAdd(container = {children: []})).to.equal @ex
                     expect(@s1).to.have.been.calledWithExactly(container)
-    
+
                 it "sets the example's title", ->
                     @c.onAdd(container = {children: []})
                     expect(@ex.title).to.equal 'Section A'
@@ -1356,24 +1356,6 @@ describe "mockdown.Parser(docOrOpts)", ->
                     expect(@pd()).to.equal @p.SCAN
                     expect(@p.started).to.be.true
 
-
-        describe ".parseTitle(tok)", ->
-
-            it "rejects tokens without the appropriate children", ->
-                expect(@p.parseTitle type:'list').to.not.exist
-                expect(@p.parseTitle type:'list', children: [type:'list_item'])
-                .to.not.exist
-
-            it "invokes .setExample(title:) with the nested text", ->
-                withSpy @p, 'setExample', (se) =>
-                    @p.parseTitle(mkTitle('Some text'))
-                    se.should.have.been.calledOnce
-                    se.should.have.been.calledWithExactly(title: 'Some text')
-
-            it "returns .SCAN on success", ->
-                expect(@p.parseTitle(mkTitle('foo'))).to.equal @p.SCAN
-
-
         describe ".parseHeading(tok)", ->
 
             it "rejects non-headings", ->
@@ -1385,12 +1367,6 @@ describe "mockdown.Parser(docOrOpts)", ->
                     .to.equal @p.SCAN
                     ss.should.have.been.calledOnce
                     ss.should.have.been.calledWithExactly(1, 'foo')
-
-
-
-
-
-
 
         describe ".parseCode(tok)", ->
 
@@ -1422,17 +1398,6 @@ describe "mockdown.Parser(docOrOpts)", ->
                 expect(@p.started).to.be.true
 
 
-
-
-
-
-
-
-
-
-
-
-
     describe "Parser States", ->
 
         shouldHaveTried = (s, tok, args...) ->
@@ -1461,12 +1426,6 @@ describe "mockdown.Parser(docOrOpts)", ->
                     shouldHaveTried(pc, tok)
                     pc.returnValues[0].should.equal res
 
-            it "accepts titles and returns .parseTitle(tok)", ->
-                withSpy @p, 'parseTitle', (pt) =>
-                    res = @p.SCAN mkTitle 'XYZ'
-                    pt.should.have.been.calledOnce
-                    pt.returnValues[0].should.equal res
-
             it "accepts headings and returns .parseHeading(tok)", ->
                 withSpy @p, 'parseHeading', (ph) =>
                     res = @p.SCAN tok = type:'heading', depth:3, text:'Yo!'
@@ -1478,12 +1437,10 @@ describe "mockdown.Parser(docOrOpts)", ->
                 tok = type: 'list'
                 withSpy @p, 'parseDirective', (pd) =>
                     withSpy @p, 'parseCode', (pc) =>
-                        withSpy @p, 'parseTitle', (pt) =>
                             withSpy @p, 'parseHeading', (ph) =>
                                 expect(@p.SCAN tok).to.equal @p.SCAN
                                 shouldHaveTried(pd, tok, no)
                                 shouldHaveTried(pc, tok)
-                                shouldHaveTried(pt, tok)
                                 shouldHaveTried(ph, tok)
 
         describe ".HAVE_CODE(tok)", ->
@@ -1514,6 +1471,8 @@ describe "mockdown.Parser(docOrOpts)", ->
                     s.should.have.been.calledOnce
                     s.should.have.been.calledWithExactly(tok)
                     s.returnValues[0].should.equal res
+
+
 
         describe ".HAVE_DIRECTIVE(tok)", ->
 

@@ -234,10 +234,10 @@
                 ([^\n]+)
             ///
             unless explicit
-                if @seq then "Example "+@seq else "Example"
+                if @seq then "Example "+@seq + (
+                    if @line then ' at line '+@line else ''
+                ) else "Example"
             else undefined
-
-
 
 
 
@@ -462,7 +462,7 @@ predicate returns true, or given thenable resolves or rejects.
             return @builder.end()
 
         SCAN: (tok) ->
-            @parseDirective(tok, no) or @parseCode(tok) or @parseTitle(tok) or
+            @parseDirective(tok, no) or @parseCode(tok) or
             @parseHeading(tok) or @SCAN
 
         HAVE_DIRECTIVE: (tok) ->
@@ -500,11 +500,6 @@ predicate returns true, or given thenable resolves or rejects.
             @started = yes
             return @HAVE_CODE
 
-        parseTitle: (tok) ->
-            return unless t = @matchDeep(tok, 'list', 'list_item', 'text')
-            @setExample(title: t.text)
-            return @SCAN
-
         parseHeading: (tok) ->
             return unless tok.type is 'heading'
             @builder.startSection(tok.depth, tok.text)
@@ -529,6 +524,11 @@ predicate returns true, or given thenable resolves or rejects.
                     @directive(@doc, tok.text, tok.line, document_specs)
             @started = yes
             return @SCAN
+
+
+
+
+
 
 
 #### Directives
