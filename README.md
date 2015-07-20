@@ -61,7 +61,7 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 * [Writing Your Tests](#writing-your-tests)
   * [Mocha Test Titles](#mocha-test-titles)
   * [Output Matching](#output-matching)
-  * [Error Handling](#error-handling)
+  * [Error Output](#error-output)
   * [Asynchronous Tests](#asynchronous-tests)
   * [Controlling Test Execution with Directives](#controlling-test-execution-with-directives)
 * [Configuring Your Tests](#configuring-your-tests)
@@ -172,7 +172,7 @@ So, anything you set with `mockdown-set` will *stay* set, until you change it wi
 
 (One other important difference between `mockdown` and `mockdown-set` directives is that `mockdown` directives must appear *immediately* before the code blocks they affect, without any other text or non-`mockdown` directives in between.  Otherwise, parsing of the document will fail with a `SyntaxError`, to avoid any ambiguity as to the intended effects.)
 
-### Setting Options With Directives
+##### Setting Options With Directives
 
 Directives aren't limited to toggling boolean flags like `skip` and `ignore`.  You can also set non-boolean options values (e.g. `<!-- mockdown: stackDepth = 3 -->`) and even combine multiple option changes in a single directive, e.g.:
 
