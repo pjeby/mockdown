@@ -83,7 +83,7 @@
 ## Containers
 
     class Container
-        props(@, children: mkArray undefined, "contained items", storage_opts)
+        props(@, children: mkArray(undefined, "contained items"), storage_opts)
 
         constructor: props.Base
 
@@ -106,7 +106,9 @@
 ### Section Objects
 
     class mockdown.Section extends Container
-        props(@, title: maybe(string) undefined, "section title")
+        props(@,
+            title: maybe(string)(undefined, "section title")
+            level: posInt(1, "heading level"))
 
         onAdd: (container) ->
             if @children.length==1 and
@@ -118,6 +120,45 @@
 
         register: (suiteFn, testFn, env) -> suiteFn @title, =>
             @registerChildren(suiteFn, testFn, env)
+
+### Builder Objects
+
+    class mockdown.Builder
+
+        constructor: (@container) ->
+            @stack = []
+
+        startSection: (level, title) ->
+            @endSection() while level <= (@container.level ? -1)
+            @stack.push @container
+            @container = new mockdown.Section({level, title})
+            return this
+
+        addExample: (e) ->
+            @container.add(e)
+            return this
+
+        endSection: ->
+            @container = @stack.pop().add(@container)
+            return this
+
+        end: ->
+            @endSection() while @stack.length
+            return @container
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -337,6 +378,7 @@ predicate returns true, or given thenable resolves or rejects.
                 arguments[0] instanceof mockdown.Document
                     @doc = arguments[0]
             else @doc = new mockdown.Document(arguments...)
+            @builder = new mockdown.Builder(@doc)
 
         match: (tok, pred) ->
             if typeof pred is 'string'
@@ -357,7 +399,6 @@ predicate returns true, or given thenable resolves or rejects.
         syntaxError: (line, message) -> injectStack(
             new SyntaxError(message), "  at (#{@doc.filename}:#{line})"
         )
-
 
 
 
@@ -397,12 +438,12 @@ predicate returns true, or given thenable resolves or rejects.
             @setExample(title: t.text)
             return @SCAN
 
+        parseHeading: (tok) ->
+            return unless tok.type is 'heading'
+            @builder.startSection(tok.depth, tok.text)
+            return @SCAN
+
         parseDirective: (tok) -> #@HAVE_DIRECTIVE
-        parseHeading: (tok) -> #@SCAN
-
-
-
-
 
 
 

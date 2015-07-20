@@ -22,11 +22,11 @@ failSafe = (done, fn) -> ->
     try fn.apply(this, arguments)
     catch e then done(e)
 
-{lex, Parser, Section, Example, Environment, Document, Waiter} = require './'
+{
+    lex, Builder, Parser, Section, Example, Environment, Document, Waiter
+} = require './'
+
 util = require 'util'
-
-
-
 
 
 
@@ -982,6 +982,88 @@ describe "mockdown.Document(opts)", ->
 
 
 
+describe "mockdown.Builder(container)", ->
+
+    beforeEach -> @b = new Builder(@d = new Document)
+
+    it "sets .container from container", -> expect(@b.container).to.equal @d
+
+    it "has an empty stack", -> expect(@b.stack).to.eql []
+
+    describe ".startSection(level, title)", ->
+
+        it "ends any sections of the same or lower level", ->
+            @b.startSection(1, "One")
+            @b.startSection(2, "Two")
+            expect(@b.stack).to.eql [@d, new Section level:1, title:"One"]
+
+            withSpy @b, 'endSection', (es) =>
+                @b.startSection(2, "Deux")
+                es.should.have.been.calledOnce
+                @b.startSection(1, "Uno")
+                es.should.have.been.calledThrice
+
+        it "pushes the current .container on its .stack", ->
+            @b.startSection(1, "One")
+            expect(@b.stack).to.eql [@d]
+            @b.startSection(2, "Two")
+            expect(@b.stack).to.eql [@d, s1 = new Section title: "One"]
+            @b.startSection(3, "Three")
+            expect(@b.stack).to.eql [@d, s1, new Section level:2, title: "Two"]
+
+        it "sets .container to a new Section w/title", ->
+            @b.startSection(1, "Level One")
+            expect(@b.container).to.eql new Section title: "Level One"
+
+        it "returns the builder", ->
+            expect(@b.startSection(1, "Level One")).to.equal @b
+
+
+
+
+
+
+    describe "endSection()", ->
+
+        it "removes a container from the stack and adds current to it", ->
+            withSpy @d, 'add', (a) =>
+                @b.startSection(1, "Uno")
+                c = @b.container
+                @b.endSection().should.equal @b
+                a.should.have.been.calledOnce
+                a.should.have.been.calledWithExactly(same(c))
+                @b.stack.should.eql []
+                @b.container.should.equal @d
+
+    describe ".addExample(example)", ->
+        it "adds example to the current .container", ->
+            withSpy @d, 'add', (a) =>
+                expect(@b.addExample(e = new Example())).to.equal @b
+                a.should.have.been.calledOnce
+                a.should.have.been.calledWithExactly(same(e))
+
+    describe ".end()", ->
+
+        it "returns container", ->
+            expect(new Builder(d = new Document).end()).to.equal d
+
+        it "ends any outstanding sections", ->
+            @b.startSection(1, "One")
+            @b.startSection(2, "Two")
+            withSpy @b, 'endSection', (es) =>
+                @b.end()
+                es.should.have.been.calledTwice
+                expect(@b.stack).to.eql []
+
+
+
+
+
+
+
+
+
+
 describe "mockdown.Parser(docOrOpts)", ->
 
     mkTitle = (text) ->
@@ -999,6 +1081,29 @@ describe "mockdown.Parser(docOrOpts)", ->
         it "gets properties from opts... otherwise", ->
             expect(new Parser({filename: 'foo.md'}, {stackDepth:20}).doc)
             .to.deep.equal new Document(filename: 'foo.md', stackDepth: 20)
+
+    describe ".builder", ->
+
+        it "is a mockdown.Builder", ->
+            expect(@p.builder).to.be.instanceOf Builder
+
+        it "whose .container is the .doc", ->
+            expect(@p.builder.container).to.equal @d
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     describe ".directiveEnv(docOrEx, allowed) returns an Environment", ->
 
@@ -1021,6 +1126,24 @@ describe "mockdown.Parser(docOrOpts)", ->
             msg = " can only be accessed via mockdown-setup"
             (=> @c.globals).should.throw(TypeError, "globals" + msg)
             (=> @c.skip = true).should.throw(TypeError, "skip" + msg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     describe ".directive(docOrEx, code, line, specs)", ->
@@ -1205,16 +1328,16 @@ describe "mockdown.Parser(docOrOpts)", ->
 
 
         describe ".parseHeading(tok)", ->
-            it "rejects non-headings"
-            it "sets .current to a new Section with a title"
 
+            it "rejects non-headings", ->
+                expect(@p.parseHeading type:'foo').to.not.exist
 
-
-
-
-
-
-
+            it "calls .builder.startSection(tok.depth, tok.text)", ->
+                withSpy @p.builder, 'startSection', (ss) =>
+                    expect(@p.parseHeading type:'heading', depth:1, text:'foo')
+                    .to.equal @p.SCAN
+                    ss.should.have.been.calledOnce
+                    ss.should.have.been.calledWithExactly(1, 'foo')
 
 
 
