@@ -173,7 +173,6 @@ mockdown has a *lot* of options you can manipulate with these directives.  Check
 
 ## Open Issues/TODO
 
-* A single test should only be promoted to a suite if it lacks an explicit title
 * Multi-language support isn't done yet
 * No API docs except nearly 2000 lines of very verbose tests
 * Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet

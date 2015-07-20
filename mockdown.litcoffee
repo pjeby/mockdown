@@ -102,7 +102,7 @@
         ingoreUndefined: bool yes, "don't output undefined results"
         writer:
             maybe(props.function) undefined, "function used to format results"
-
+        language: maybe(string) undefined, "name of language used"
     document_specs = props.assign {}, example_specs,
         filename: string '<anonymous>', "filename for stack traces"
         globals: object {}, "global vars for examples"
@@ -129,7 +129,7 @@
         constructor: props.Base
 
         add: (child) ->
-            @children.push child.onAdd(this)
+            @children.push(c) if (c = child.onAdd(this))?
             this
 
         registerChildren: (suiteFn, testFn, env) ->
@@ -153,11 +153,11 @@
 
         onAdd: (container) ->
             if @children.length==1 and
-             (child = @children[0]) instanceof mockdown.Example
-                child.title ?= @title
-                child.onAdd(container)
-            else
-                this
+             (child = @children[0]) instanceof mockdown.Example and
+                !child.getTitle(yes)?
+                    child.title = @title
+                    child.onAdd(container)
+            else if @children.length then this
 
         register: (suiteFn, testFn, env) -> suiteFn @title, =>
             @registerChildren(suiteFn, testFn, env)
@@ -224,7 +224,7 @@
                 my = this
                 testFn @getTitle(), (done) -> my.runTest(env, @runnable(), done)
 
-        getTitle: ->
+        getTitle: (explicit=no)->
             return @title if @title?
             return m[2].trim() if m = @code?.match ///
                 ^
@@ -233,9 +233,9 @@
                 \s*
                 ([^\n]+)
             ///
-            if @seq then "Example "+@seq else "Example"
-
-
+            unless explicit
+                if @seq then "Example "+@seq else "Example"
+            else undefined
 
 
 

@@ -832,6 +832,11 @@ specifyContainer = ->
             expect(s3).to.have.been.calledWithExactly(@c)
             expect(@c.children).to.deep.equal [41, 42, 43]
 
+        it "doesn't append null or undefined", ->
+            expect(@c.children).to.deep.equal []
+            @c.add(onAdd: ->); @c.add(onAdd: -> null)
+            expect(@c.children).to.deep.equal []
+                        
         it "returns this", ->
             expect(@c.add({onAdd:->this})).to.equal @c
 
@@ -854,13 +859,7 @@ specifyContainer = ->
         it "returns this", ->
             expect(@c.registerChildren((->), (->), @env)).to.equal @c
 
-
-
-
-
-
 describe 'mockdown.Section({title:"..."})', ->
-
     beforeEach -> @c = new Section(title: "Section A")
 
     it "sets .title from the given title", ->
@@ -870,7 +869,10 @@ describe 'mockdown.Section({title:"..."})', ->
 
     describe ".onAdd(container)", ->
 
-        it "returns this", ->
+        it "returns undefined when it has no children", ->
+            expect(@c.onAdd(container = {children: []})).to.not.exist
+
+        it "returns this when it has children", ->
             @c.add(onAdd: -> this)
             expect(@c.onAdd(container = {})).to.equal @c
 
@@ -879,26 +881,24 @@ describe 'mockdown.Section({title:"..."})', ->
                 @c.add(@ex = new Example)
                 @s1 = spy.named 'onAdd', @ex, 'onAdd'
 
-            it "returns example.onAdd(container) in place of itself", ->
-                expect(@c.onAdd(container = {children: []})).to.equal @ex
-                expect(@s1).to.have.been.calledWithExactly(container)
+            describe "and the example has no title, it", ->
+                it "returns example.onAdd(container) in place of itself", ->
+                    expect(@c.onAdd(container = {children: []})).to.equal @ex
+                    expect(@s1).to.have.been.calledWithExactly(container)
+    
+                it "sets the example's title", ->
+                    @c.onAdd(container = {children: []})
+                    expect(@ex.title).to.equal 'Section A'
 
-            it "sets the example's title if not already set", ->
-                @c.onAdd(container = {children: []})
-                expect(@ex.title).to.equal 'Section A'
-
-            it "leaves the title alone if already set", ->
+            it "returns this if the title is explicitly set", ->
                 @ex.title = 'First Example'
-                @c.onAdd(container = {children: []})
+                expect(@c.onAdd(container = {children: []})).to.equal @c
                 expect(@ex.title).to.equal 'First Example'
 
-
-
-
-
-
-
-
+            it "returns this if the title is implicitly set", ->
+                @ex.code = '// Title Here'
+                expect(@c.onAdd(container = {children: []})).to.equal @c
+                expect(@ex.title).to.not.exist
 
     describe ".register(suiteFn, testFn, env)", ->
 
@@ -1624,17 +1624,17 @@ describe "mockdown.Parser(docOrOpts)", ->
                 d = @p.parse """\
                 # Start
 
-                <!--mockdown: ++ignore -->
-
-
                 ```ignore
                 me
                 ```
+                    too
                 """
                 expect(d).to.equal @d
                 d.should.eql new Document children: [
-                    new Section level: 1, title: "Start", children: []
-                ]
+                  new Section level: 1, title: "Start", children: [
+                    new Example(code: 'me', seq: 1, line: 3, language:'ignore')
+                    new Example(code: 'too', seq: 2, line: 6)
+                ]]
                 expect(@p.example).to.not.exist
 
 
