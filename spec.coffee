@@ -1071,6 +1071,9 @@ describe "mockdown.Parser(docOrOpts)", ->
             type: 'list_item', children: [type: 'text', text: text]
         ]
 
+    mkDirective = (suffix, text, line=1) ->
+        type: 'html', text: "<!-- mockdown#{suffix}:#{text}-->", line:line
+
     beforeEach -> @p = new Parser(@d = new Document)
 
     describe ".doc", ->
@@ -1089,9 +1092,6 @@ describe "mockdown.Parser(docOrOpts)", ->
 
         it "whose .container is the .doc", ->
             expect(@p.builder.container).to.equal @d
-
-
-
 
 
 
@@ -1272,42 +1272,89 @@ describe "mockdown.Parser(docOrOpts)", ->
     describe "Parsing Functions", ->
 
         describe ".parseDirective(tok, haveDirective)", ->
-            it "rejects tokens that fail .matchDirective()"
-            it "only accepts plain 'mockdown' directives if haveDirective"
+
+            it "rejects tokens that fail .matchDirective()", ->
+                withSpy @p, 'matchDirective', (md) =>
+                    withSpy @p, 'directive', (d) =>
+                        expect(@p.parseDirective(tok=type:'foo')).to.not.exist
+                        md.should.have.been.calledOnce
+                        md.should.have.been.calledWithExactly(tok)
+                        d.should.not.have.been.called
+
+            it "only accepts plain 'mockdown' directives, if haveDirective", ->
+                expect(@p.parseDirective(mkDirective('-set','42'), yes))
+                .to.not.exist
+                expect(@p.parseDirective(mkDirective('-setup','42'), yes))
+                .to.not.exist
+                expect(@p.parseDirective(mkDirective('','42'), yes))
+                .to.equal @p.HAVE_DIRECTIVE
 
             describe "when directive is 'mockdown'", ->
-                it "invokes .directive(.setExample(), tok.text, tok.line)"
-                it "returns .HAVE_DIRECTIVE state and sets .started"
+                beforeEach -> @pd = => @p.parseDirective(mkDirective('', '42'))
+
+                it "invokes .directive(.setExample(), tok.text, tok.line)", ->
+                    withSpy @p, 'directive', (d) =>
+                        withSpy @p, 'setExample', (se) =>
+                            @pd()
+                            se.should.have.been.calledOnce
+                            se.should.have.been.calledWithExactly()
+                            d.should.have.been.calledOnce
+                            d.should.have.been.calledWithExactly(
+                                @p.example, '42', 1
+                            )
+                            d.should.have.been.calledAfter(se)
+
+                it "returns .HAVE_DIRECTIVE state and sets .started", ->
+                    expect(@p.started).not.to.be.true
+                    @pd().should.equal @p.HAVE_DIRECTIVE
+                    expect(@p.started).to.be.true
+
 
             describe "when directive is 'mockdown-set'", ->
-                it "invokes .directive(.doc, tok.text, tok.line)"
-                it "returns .SCAN state and sets .started"
+
+                beforeEach ->
+                    @pd = => @p.parseDirective(mkDirective('-set', '99'))
+
+                it "invokes .directive(.doc, tok.text, tok.line)", ->
+                    withSpy @p, 'directive', (d) =>
+                        @pd()
+                        d.should.have.been.calledOnce
+                        d.should.have.been.calledWithExactly(@d, '99', 1)
+
+
+                it "returns .SCAN state and sets .started", ->
+                    expect(@p.started).not.to.be.true
+                    expect(@pd()).to.equal @p.SCAN
+                    expect(@p.started).to.be.true
 
             describe "when directive is 'mockdown-setup'", ->
-                it "throws an error if already .started"
-                it "invokes .directive(.doc, tok.text, tok.line, specs)"
-                it "with specs that permit global options to be set"
-                it "returns .SCAN state and sets .started"
+
+                beforeEach ->
+                    @pd = => @p.parseDirective(mkDirective('-setup', '54', 7))
+
+                it "throws an error if already .started", ->
+                    @p.started = yes
+                    (=> @pd()).should.throw SyntaxError,
+                        "setup must be before other code or directives"
+                    try @pd() catch err
+                        expect(err.stack.split('\n')[1])
+                        .to.equal "  at (<anonymous>:7)"
+
+                it "invokes .directive(.doc, tok.text, tok.line, specs)", ->
+                    withSpy @p, 'directive', (d) =>
+                        @pd()
+                        d.should.have.been.calledOnce
+                        d.should.have.been.calledWithExactly(
+                            @d, '54', 7, s = d.args[0][3]
+                        )
+                        s.should.have.ownProperty('globals')
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                it "returns .SCAN state and sets .started", ->
+                    expect(@p.started).not.to.be.true
+                    expect(@pd()).to.equal @p.SCAN
+                    expect(@p.started).to.be.true
 
 
         describe ".parseTitle(tok)", ->
@@ -1338,12 +1385,6 @@ describe "mockdown.Parser(docOrOpts)", ->
                     .to.equal @p.SCAN
                     ss.should.have.been.calledOnce
                     ss.should.have.been.calledWithExactly(1, 'foo')
-
-
-
-
-
-
 
 
 
@@ -1394,9 +1435,31 @@ describe "mockdown.Parser(docOrOpts)", ->
 
     describe "Parser States", ->
 
+        shouldHaveTried = (s, tok, args...) ->
+            s.should.have.been.calledOnce
+            s.should.have.been.calledWithExactly(same(tok), args...)
+
         describe ".SCAN(tok)", ->
-            it "returns .parseDirective(tok, no) for any directive"
-            it "accepts code and returns .parseCode(tok)"
+
+            it "returns .parseDirective(tok, no) for any directive", ->
+                withSpy @p, 'parseDirective', (pd) =>
+                    expect(@p.SCAN tok = mkDirective('-setup','42',9))
+                    .to.equal @p.SCAN
+                    shouldHaveTried(pd, tok, no)
+                withSpy @p, 'parseDirective', (pd) =>
+                    expect(@p.SCAN tok = mkDirective('-set','55',17))
+                    .to.equal @p.SCAN
+                    shouldHaveTried(pd, tok, no)
+                withSpy @p, 'parseDirective', (pd) =>
+                    expect(@p.SCAN tok = mkDirective('', '21', 19))
+                    .to.equal @p.HAVE_DIRECTIVE
+                    shouldHaveTried(pd, tok, no)
+
+            it "accepts code and returns .parseCode(tok)", ->
+                withSpy @p, 'parseCode', (pc) =>
+                    res = @p.SCAN tok = type:'code', text:'foo', line:17
+                    shouldHaveTried(pc, tok)
+                    pc.returnValues[0].should.equal res
 
             it "accepts titles and returns .parseTitle(tok)", ->
                 withSpy @p, 'parseTitle', (pt) =>
@@ -1404,46 +1467,46 @@ describe "mockdown.Parser(docOrOpts)", ->
                     pt.should.have.been.calledOnce
                     pt.returnValues[0].should.equal res
 
-            it "accepts headings and returns .parseHeading(tok)"
+            it "accepts headings and returns .parseHeading(tok)", ->
+                withSpy @p, 'parseHeading', (ph) =>
+                    res = @p.SCAN tok = type:'heading', depth:3, text:'Yo!'
+                    shouldHaveTried(ph, tok)
+                    ph.returnValues[0].should.equal res
+
 
             it "returns .SCAN for everything else", ->
-
                 tok = type: 'list'
-
-                shouldHaveTried = (s, args...) ->
-                    s.should.have.been.calledOnce
-                    s.should.have.been.calledWithExactly(same(tok), args...)
-
                 withSpy @p, 'parseDirective', (pd) =>
                     withSpy @p, 'parseCode', (pc) =>
                         withSpy @p, 'parseTitle', (pt) =>
                             withSpy @p, 'parseHeading', (ph) =>
                                 expect(@p.SCAN tok).to.equal @p.SCAN
-                                shouldHaveTried(pd, no)
-                                shouldHaveTried(pc)
-                                shouldHaveTried(pt)
-                                shouldHaveTried(ph)
-
-        describe ".HAVE_DIRECTIVE(tok)", ->
-            it "returns .parseDirective(tok, yes) for plain directives"
-            it "accepts code and returns .HAVE_CODE"
-            it "throws a SyntaxError for anything else"
-
-
-
-
+                                shouldHaveTried(pd, tok, no)
+                                shouldHaveTried(pc, tok)
+                                shouldHaveTried(pt, tok)
+                                shouldHaveTried(ph, tok)
 
         describe ".HAVE_CODE(tok)", ->
-
             beforeEach -> @ex = @p.example = new Example
 
-            it "accepts output and adds it to the example"
-            it "adds .example to the current doc or section"
-            it "unless the example should be ignored"
+            it "accepts output and adds it to the example", ->
+                @p.HAVE_CODE type:'blockquote', children: [
+                    type: 'code', text: 'foobly-doo']
+                expect(@ex.output).to.equal 'foobly-doo'
+
+            it "adds .example to the current doc or section", ->
+                withSpy @p.builder, 'addExample', (ae) =>
+                    @p.HAVE_CODE(type: 'any')
+                    ae.should.have.been.calledWithExactly(@ex)
+
+            it "unless the example should be ignored", ->
+                withSpy @p.builder, 'addExample', (ae) =>
+                    @ex.ignore = yes
+                    @p.HAVE_CODE(type: 'any')
+                    ae.should.not.have.been.called
 
             it "clears the current .example", ->
-                @p.HAVE_CODE(type: 'text')
-                expect(@p.example).to.not.exist
+                @p.HAVE_CODE(type: 'text'); expect(@p.example).to.not.exist
 
             it "returns .SCAN(tok)", ->
                 withSpy @p, 'SCAN', (s) =>
@@ -1452,16 +1515,35 @@ describe "mockdown.Parser(docOrOpts)", ->
                     s.should.have.been.calledWithExactly(tok)
                     s.returnValues[0].should.equal res
 
+        describe ".HAVE_DIRECTIVE(tok)", ->
 
+            it "returns .parseDirective(tok, yes) for plain directives", ->
+                withSpy @p, 'parseDirective', (pd) =>
+                    tok = type: 'html', text: '<!-- mockdown: 0 -->', line: 2
+                    expect(@p.HAVE_DIRECTIVE(tok)).to.equal @p.HAVE_DIRECTIVE
+                    shouldHaveTried(pd, tok, yes)
 
+            it "accepts code and returns .HAVE_CODE", ->
+                withSpy @p, 'parseCode', (pc) =>
+                    tok = type: 'code', text: 'foo', line: 5
+                    expect(@p.HAVE_DIRECTIVE(tok)).to.equal @p.HAVE_CODE
+                    shouldHaveTried(pc, tok)
 
+            it "throws a SyntaxError for anything else", ->
+                tok = type: 'foo', line:66
+                withSpy @p, 'parseDirective', (pd) =>
+                    withSpy @p, 'parseCode', (pc) =>
+                        (=> @p.HAVE_DIRECTIVE(tok))
+                        .should.throw(
+                            SyntaxError,
+                            "no example found for preceding directives"
+                        )
+                        shouldHaveTried(pd, tok, yes)
+                        shouldHaveTried(pc, tok)
 
-
-
-
-
-
-
+                try @p.HAVE_DIRECTIVE(tok) catch err
+                    expect(err.stack.split('\n')[1])
+                    .to.equal "  at (<anonymous>:66)"
 
 
 

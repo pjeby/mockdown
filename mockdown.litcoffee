@@ -414,15 +414,40 @@ predicate returns true, or given thenable resolves or rejects.
             @parseDirective(tok, no) or @parseCode(tok) or @parseTitle(tok) or
             @parseHeading(tok) or @SCAN
 
-        #HAVE_DIRECTIVE: (tok) ->
+        HAVE_DIRECTIVE: (tok) ->
+            @parseDirective(tok, yes) or @parseCode(tok) or throw @syntaxError(
+                tok.line, "no example found for preceding directives"
+            )
 
         HAVE_CODE: (tok) ->
+            if out = @matchDeep(tok, 'blockquote', 'code')
+                @setExample(output: out.text)
+            @builder.addExample @example unless @example.ignore
             @example = undefined
             return @SCAN(tok)
 
         setExample: (data) ->
             return props.assign(@example, data) if @example?
             @example ?= new mockdown.Example(data, @doc)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### Parsing Rules
 
@@ -443,9 +468,25 @@ predicate returns true, or given thenable resolves or rejects.
             @builder.startSection(tok.depth, tok.text)
             return @SCAN
 
-        parseDirective: (tok) -> #@HAVE_DIRECTIVE
-
-
+        parseDirective: (tok, haveDirective) ->
+            return unless tok = @matchDirective(tok)
+            switch tok.type
+                when 'mockdown'
+                    @directive(@setExample(), tok.text, tok.line)
+                    @started = yes
+                    return @HAVE_DIRECTIVE
+                when 'mockdown-set'
+                    return if haveDirective
+                    @directive(@doc, tok.text, tok.line)
+                when 'mockdown-setup'
+                    return if haveDirective
+                    throw @syntaxError(
+                        tok.line,
+                        "setup must be before other code or directives"
+                    ) if @started
+                    @directive(@doc, tok.text, tok.line, document_specs)
+            @started = yes
+            return @SCAN
 
 
 
