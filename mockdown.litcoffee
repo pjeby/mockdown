@@ -95,7 +95,6 @@
         skip:   bool no, "mark the test pending?"
         ignore: bool no, "treat the example as a non-test"
 
-        title: maybe(string) undefined, "title of the test"
         waitName: maybe(string) 'wait', "name of 'wait()' function"
         testName: maybe(string) 'test', "name of current mocha test object"
 
@@ -117,8 +116,9 @@
         code:
             maybe(string) undefined, "code of the test"
         output:
-            maybe(string) undefined, "expected output"
+            string '', "expected output"
         seq: maybe(int)   undefined, "an example's sequence #"
+        title: maybe(string) undefined, "title of the test"
 
 
 ## Containers

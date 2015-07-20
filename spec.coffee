@@ -301,7 +301,7 @@ checkDefaults = (cls, isDocument=no) ->
         line: [undefined, 42]
         title: [undefined, 'An Example']
         code: [undefined, '1+1']
-        output: [undefined, 'xxx']
+        output: ['', 'xxx']
     } then do (k, dflt, alt) ->
 
         # Don't test internal props on Document

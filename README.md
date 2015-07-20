@@ -9,6 +9,8 @@ But what if you could *automatically* test your examples, as part of your projec
 Mockdown lets you do all of these things, and more, by testing code samples embedded in markdown files, like this:
 
 ```javascript
+// "Hello world" Sample
+
 console.log("Hello world!")
 ```
 >     Hello world!
@@ -20,8 +22,11 @@ If the output doesn't match, or an unexpected error is thrown, the test fails.  
 <!-- mockdown: --printResults -->
 
 ```javascript
-var done = wait();  // this gets a callback... but we could have also just
-                    // passed in a promise, predicate, or timeout to wait for
+// Using wait() with setTimeout()
+
+var done = wait();  // wait() with no arguments returns a callback... but we
+                    // could have given it a promise, predicate, or timeout
+                    // to wait for instead
 
 setTimeout(function(){
   console.log("Hello world!");
@@ -46,11 +51,16 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 * Supports other languages besides plain Javascript -- including the use of multiple languages in the same document
 * Uses mocha for test running and reporting, allowing integration into existing test suites
 
+#### Contents
+
+<!-- toc -->
+
 ## Usage
 
 To include documentation files in your test suites, just pass a list of filenames, the mocha suite and test functions, and an optional options object to `mockdown.testFiles()`:
 
 <!-- mockdown: ++skip -->
+
 ```js
 var mockdown = require('mockdown');
 
@@ -61,15 +71,31 @@ mockdown.testFiles(['README.md'], describe, it, {
 
 If you call this from a top-level module, the added test suites will be at the top level;  if you call it from inside a suite or `describe()` block, the suites will be nested within that block.
 
-### Language Options
-
-### Output Matching Options
-
 ## Writing Tests
 
-### Syntax,  Organization and Titles
-* Language specs
-* Titles (list, section, "Example", comment)
+For the most part, tests are free-form.  Just insert code blocks, optionally followed by blockquoted code blocks to specify expected output.  Markdown section headings delineate mocha suites, with the heading levels being used to determine the nesting structure, and the section titles used to name the suites.
+
+### Titling
+
+Tests can optionally be preceded by a bulleted title, like this:
+
+* This will show up as the mocha test title
+
+```javascript
+{ /* We're not testing anything here except the test title! */ }
+```
+
+Or, if your code sample's first line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language, it'll be used as the test's title, e.g.:
+
+```javascript
+// This will also show up as a test title
+
+{ /* and we're still not really testing anything! */ }
+```
+
+Or, if you have only one code sample within a suite, the suite will be replaced with the single test, and get its title from the markdown section heading.
+
+Or, if all else fails, the sample will end up with a title of "Example N", where N is its sequence number within the current suite.
 
 ### Output Matching
 
@@ -77,16 +103,63 @@ If you call this from a top-level module, the added test suites will be at the t
 * Ellipsis matching
 * Whitespace issues
 
-### Asynchronous Completion
-
 ### Error Handling
 * Error output
 
 
-### Directives
+### Asynchronous Tests
 
-* Parse caveats (standalone directives only, before tests only, etc.)
-* Pending tests
-* Ignoring tests
-* Setting language
-* Matching options
+If your code sample completes asynchronously, you need to use the `wait()` function.  When called without any arguments, it returns a node-style callback for completion of the test.  If you call it with an error, the error will be output to the virtual console and become part of the output for output matching purposes.  So if the error is expected, the test will still succeed.
+
+If you are working with promises instead, you can call `wait(aPromise)` to make the test wait for the promise to finish.  As with the callback scenario, a promise rejection is treated as an error that gets written to the virtual console for output matching purposes.
+
+If you have neither a callback-taking function or a promise, you can still use `wait(timeout)` to wait the specified number of milliseconds, `wait(aFunction)` to call `aFunction()` every millisecond until it returns true, or `wait(interval, aFunction)` to do the same thing with a specified number of milliseconds between checks.
+
+(By the way, if you need `wait()` to have a different name because you need to use the name `wait` for something else in your examples, you can rename it by changing the `waitName` option in a directive, or in the options you supply to the mockdown API.  See the "Options Reference" and the section on using directives for more details.)
+
+### Controlling Test Behavior with Directives
+
+There are three types of directives you can use to control the behavior of your tests:
+
+* `<!-- mockdown: `*options*` -->` lets you change options for the *next* code sample, after which they will revert to the way they were before
+
+* `<!-- mockdown-set: `*options*` -->` lets you change options *from this point on*; the changed options will be the default until changed by another directive
+
+* `<!-- mockdown-setup: `*options*` -->` can be used, *once*, near the top of the document, before any other directives or code samples.  In addition to letting you do anything you can do with a `mockdown-set` directive, you can also use it to set up global variables that will be available to your examples.  (For example, you can `require()` things here, or even include short utility functions.)
+
+In all three cases, the *options* consist of JavaScript code.  The code can assign options by name, e.g. `stackDepth = 3` or `printResults = false`.  As a shorthand for boolean options, you can also increment or decrement them to make them true or false.  For example, `<!-- mockdown: ++skip -->` will mark the next code sample as pending in mocha.  (Note: it doesn't matter how many times you increment or decrement, the option will always reset to `true` when you increment it, and `false` when you decrement it.)
+
+mockdown has a *lot* of options you can manipulate with these directives.  Check out the "Options Reference" near the end of this document for the complete list.
+
+
+## Options Reference
+
+### Options for Variables Used in Examples
+
+* `globals` - an object containing the variables to be made available to all examples.  Can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  Default: an empty object.
+
+* `waitName` - the name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If undefined, the `wait()` function will not be accessible from the example.  String or undefined, default: `"wait"`.
+
+* `testName` - the name the current mocha `test` object will be made available under, so you can e.g. change the test timeout.  If undefined, the test object will not be accessible from the example.  String or undefined, default: `"test"`.
+
+### Options for Test Control Flow
+
+* `skip` - mark the test(s) pending in Mocha.  Boolean, default: `false`.
+
+* `ignore` - do not turn markdown code blocks into examples.  Can be used with a `mockdown` directive to "comment out" a single test, or a pair of `mockdown-set` directives to comment out a group of tests.   Boolean, default: `false`.
+
+### Options for Error Formatting
+
+* `showOutput` - when a test fails due to unmatched output, show the full expected and received output.  Boolean, default: `true`.
+
+* `showDiff` - when a test fails due to unmatched output, tell mocha to diff the output.  Boolean, default: `false`.
+
+* `stackDepth` - when a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an integer; can be set from 0 to `Infinity`.  Default: `0`.
+
+### Options for Output and Result Matching
+
+* `printResults`
+* `ignoreUndefined`
+* `writer`
+
+
