@@ -414,7 +414,7 @@ predicate returns true, or given thenable resolves or rejects.
         return new mockdown.Parser(options).parse(input)
     mockdown.parseFile = (path, options) ->
         return new mockdown.Parser(options).parseFile(path)
-        
+
 ### The Parser
 
     class mockdown.Parser
