@@ -178,4 +178,3 @@ mockdown has a *lot* of options you can manipulate with these directives.  Check
 * Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet
 * Ellipsis and whitespace options for output matching aren't implemented
 * When an error match fails, we should probably output the original error as well as expected/actual output, instead of falling back to the original error; right now it's too hard to figure out what's wrong when a test that has an expected error is broken
-* Line numbers for fenced code blocks may be off by 1 - need to check on this

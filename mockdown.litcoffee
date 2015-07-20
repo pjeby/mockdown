@@ -495,6 +495,7 @@ predicate returns true, or given thenable resolves or rejects.
         parseCode: (tok) ->
             return unless tok.type is 'code'
             @setExample(line: tok.line, code: tok.text)
+            @example.line += 1 if tok.hasOwnProperty('lang')
             @example.language = tok.lang if tok.lang?
             @started = yes
             return @HAVE_CODE
@@ -528,7 +529,6 @@ predicate returns true, or given thenable resolves or rejects.
                     @directive(@doc, tok.text, tok.line, document_specs)
             @started = yes
             return @SCAN
-
 
 
 #### Directives

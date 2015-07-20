@@ -1632,7 +1632,7 @@ describe "mockdown.Parser(docOrOpts)", ->
                 expect(d).to.equal @d
                 d.should.eql new Document children: [
                   new Section level: 1, title: "Start", children: [
-                    new Example(code: 'me', seq: 1, line: 3, language:'ignore')
+                    new Example(code: 'me', seq: 1, line: 4, language:'ignore')
                     new Example(code: 'too', seq: 2, line: 6)
                 ]]
                 expect(@p.example).to.not.exist
