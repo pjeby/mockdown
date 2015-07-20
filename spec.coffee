@@ -1647,6 +1647,9 @@ describe "mockdown.Parser(docOrOpts)", ->
                     @p.parseFile(f)
                     p.should.have.been.calledWithExactly(t)
 
+            it "sets the .filename of the document if not set", ->
+                expect(@p.parseFile(p='README.md').filename).to.equal p
+                
 
 
 

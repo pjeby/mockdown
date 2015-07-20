@@ -412,14 +412,12 @@ predicate returns true, or given thenable resolves or rejects.
 
     mockdown.parse = (input, options) ->
         return new mockdown.Parser(options).parse(input)
-
     mockdown.parseFile = (path, options) ->
         return new mockdown.Parser(options).parseFile(path)
         
 ### The Parser
 
     class mockdown.Parser
-
         constructor:  ->
             if arguments.length == 1 and
                 arguments[0] instanceof mockdown.Document
@@ -447,7 +445,9 @@ predicate returns true, or given thenable resolves or rejects.
             new SyntaxError(message), "  at (#{@doc.filename}:#{line})"
         )
 
-        parseFile: (path) -> @parse require('fs').readFileSync(path, 'utf8')
+        parseFile: (path) ->
+            @doc.filename = path if @doc.filename is '<anonymous>'
+            @parse require('fs').readFileSync(path, 'utf8')
 
 #### Parsing States
 
