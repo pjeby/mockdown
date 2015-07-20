@@ -15,7 +15,7 @@ console.log("Hello world!")
 ```
 >     Hello world!
 
-The above is a *documentation test*, or "doctest".  You embed a code block to be run, optionally followed by a blockquoted code block representing its output.  (If you don't include the output block, it's the same as asserting the example outputs nothing.)
+The above is a *documentation test*, or "doctest".  You embed a code block to be run, optionally followed by a blockquoted code block representing its output.  (If you don't include the output block, it's the same as asserting the example will output nothing.)
 
 If the output doesn't match, or an unexpected error is thrown, the test fails.  If your test completes asynchronously, you can use `wait()` to defer the test's completion until a callback, promise resolution, or other asynchronous result occurs:
 
@@ -38,7 +38,10 @@ setTimeout(function(){
 Section headings in your markdown files define mocha suites, so your test suites will precisely match the table of contents of your documentation files.  If you need to do things like mark tests to be skipped or ignored, you can add simple HTML comment directives like this:
 
 <!-- mockdown: ++ignore -->
-    <!-- mockdown: ++skip -->
+
+```html
+<!-- mockdown: ++skip -->
+```
 
 in order to mark a test pending, override the language defaults, change how output is checked, etc.
 
@@ -55,27 +58,41 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 
 <!-- toc -->
 
-## Usage
+* [Writing Your Tests](#writing-your-tests)
+  * [Mocha Test Titles](#mocha-test-titles)
+  * [Output Matching](#output-matching)
+  * [Error Handling](#error-handling)
+  * [Asynchronous Tests](#asynchronous-tests)
+  * [Controlling Test Execution with Directives](#controlling-test-execution-with-directives)
+* [Configuring Your Tests](#configuring-your-tests)
+  * [Making Variables Available in Examples](#making-variables-available-in-examples)
+  * [Controlling Whether Tests are Included or Run](#controlling-whether-tests-are-included-or-run)
+  * [Controlling the Formatting of Errors](#controlling-the-formatting-of-errors)
+  * [Controlling Test Output and Expected Result Matching](#controlling-test-output-and-expected-result-matching)
+  * [Other Options](#other-options)
+* [Running Your Tests](#running-your-tests)
+  * [The `mockdown.testFiles()` API](#the-mockdowntestfiles-api)
+  * [Controlling How/When Tests Are Added](#controlling-howwhen-tests-are-added)
+* [Open Issues/TODO](#open-issuestodo)
 
-To include documentation files in your test suites, just pass a list of filenames, the mocha suite and test functions, and an optional options object to `mockdown.testFiles()`:
+<!-- toc stop -->
 
-<!-- mockdown: ++skip -->
 
-```js
-var mockdown = require('mockdown');
+## Writing Your Tests
 
-mockdown.testFiles(['README.md'], describe, it, {
-  printResults: false  
-})
-```
+For the most part, tests are free-form.  Just insert code blocks, optionally followed by blockquoted code blocks (`> `-prefaced) to specify expected output.  Markdown section headings delineate mocha suites, with the heading levels being used to determine the nesting structure, and the section titles used to name the suites.
 
-If you call this from a top-level module, the added test suites will be at the top level;  if you call it from inside a suite or `describe()` block, the suites will be nested within that block.
+Both the sample code and the expected output can be either Github-style "fenced" code blocks or traditional 4-space indented code blocks.  Remember, however, that blockquotes require a space after the `>`, so if you are using indented code blocks for expected output, you will need **5** spaces between the `>` and the beginning of expected output.  That is:
 
-## Writing Tests
+>     >    this is not an expected output block!
 
-For the most part, tests are free-form.  Just insert code blocks, optionally followed by blockquoted code blocks to specify expected output.  Markdown section headings delineate mocha suites, with the heading levels being used to determine the nesting structure, and the section titles used to name the suites.
+----
 
-### Titling
+>     >     but *this* is!    
+
+If you don't include all five spaces, the markdown parser will see the blockquote as regular text, so mockdown won't see it as an expected-output block, and your test will fail, despite it looking okay to the naked eye.
+
+### Mocha Test Titles
 
 Tests can optionally be preceded by a bulleted title, like this:
 
@@ -93,17 +110,17 @@ Or, if your code sample's first line begins with a line comment (`//`, `#`, `--`
 { /* and we're still not really testing anything! */ }
 ```
 
-Or, if you have only one code sample within a suite, the suite will be replaced with the single test, and get its title from the markdown section heading.
+Or, if you haven't given the code sample an explicit title in either of these ways, but it's the only code sample within a suite, the suite will be replaced with the single test, and the test will take the suite's previous title.  (In other words, if a test is the only thing under a given markdown section heading, it'll take the heading as a title.)
 
-Or, if all else fails, the sample will end up with a title of "Example N", where N is its sequence number within the current suite.
+Finally, if a test doesn't get a title from any of the above sources, it'll end up with a title of "Example N", where N is its sequence number within the current suite.
 
 ### Output Matching
 
-Code samples are run in a virtual environment with a simulated console, using the [`mock-globals`](https://npmjs.com/package/mock-globals) library.  Anything that a code sample outputs via `console.log`, `console.dir`, etc. will be sent to the output record, which is then compared against the expected output at the end of the test run.
+Code samples are run in a virtual environment with a simulated console, using the [`mock-globals`](https://npmjs.com/package/mock-globals) module.  Anything that a code sample outputs via `console.log`, `console.dir`, etc. will be sent to the console's output record, which is then compared against the expected output at the end of each test run.
 
 If the output doesn't match the expected output, the test will fail with a detailed error message showing the actual and expected output (unless you suppress it by changing the relevant options.)
 
-By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different values to the API, or by using directives.  See the Options Reference and the sections below on directives for more details.)
+By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different values to the API, or by using directives.)
 
 ### Error Handling
 
@@ -126,50 +143,184 @@ If you have neither a callback-taking function or a promise, you can still use `
 
 (By the way, if you need `wait()` to have a different name because you need to use the name `wait` for something else in your examples, you can rename it by changing the `waitName` option in a directive, or in the options you supply to the mockdown API.  See the "Options Reference" and the section on using directives for more details.)
 
-### Controlling Test Behavior with Directives
+### Controlling Test Execution with Directives
 
-There are three types of directives you can use to control the behavior of your tests:
+Sometimes, you need to have mocha skip a test and mark it pending.  Other times, you may have code blocks in your documentation that you don't want to treat as tests at all!  You can use **directives** to control these things, as well as setting other options.   For example, to skip a single test and mark it pending, you can use:
 
-* `<!-- mockdown: `*options*` -->` lets you change options for the *next* code sample, after which they will revert to the way they were before
+<!--mockdown-set: ++ignore -->
 
-* `<!-- mockdown-set: `*options*` -->` lets you change options *from this point on*; the changed options will be the default until changed by another directive
+```html
+<!-- mockdown: ++skip -->
+```
 
-* `<!-- mockdown-setup: `*options*` -->` can be used, *once*, near the top of the document, before any other directives or code samples.  In addition to letting you do anything you can do with a `mockdown-set` directive, you can also use it to set up global variables that will be available to your examples.  (For example, you can `require()` things here, or even include short utility functions.)
+Or to treat the next code block as a non-test code block, you can use:
 
-In all three cases, the *options* consist of JavaScript code.  The code can assign options by name, e.g. `stackDepth = 3` or `printResults = false`.  As a shorthand for boolean options, you can also increment or decrement them to make them true or false.  For example, `<!-- mockdown: ++skip -->` will mark the next code sample as pending in mocha.  (Note: it doesn't matter how many times you increment or decrement, the option will always reset to `true` when you increment it, and `false` when you decrement it.)
+```html
+<!-- mockdown: ++ignore -->
+```
 
-mockdown has a *lot* of options you can manipulate with these directives.  Check out the "Options Reference" near the end of this document for the complete list.
+If you want to mark *multiple* tests to skip or code blocks to ignore, you can bracket them with a pair of `mockdown-set` directives, like so:
+
+```html
+<!-- mockdown-set: ++skip -->
+
+Tests between these directives will be marked
+"pending" in mocha!
+
+<!-- mockdown-set: --skip -->
+```
+
+The difference between a `mockdown` directive and a `mockdown-set` one is that `mockdown` only affects the *next* code block encountered, while `mockdown-set` changes the current *default* options for the document.
+
+So, anything you set with `mockdown-set` will *stay* set, until you change it with another `mockdown-set` -- even if it's temporarily overridden for one test with a `mockdown` directive.  (This makes it easy to change an option for just one test, because you don't have to remember to change things *back* afterwards: just use a `mockdown` directive for anything that should apply to just one test.)
+
+Directives aren't limited to toggling boolean flags like `skip` and `ignore`.  You can also set non-boolean options values (e.g. `<!-- mockdown: stackDepth = 3 -->`) and even combine multiple option changes in a single directive, e.g.:
+
+```html
+<!-- mockdown: stackDepth=3; waitName="defer"; ++showDiff -->
+```
+
+If this looks a lot like Javascript code, that's because it is!  Directive bodies are actually code that runs in a separate `mock-globals` environment, where global variables are tied directly to the options for the next code block (in a `mockdown` directive), or the document defaults (in a `mockdown-set` directive).
+
+When used with a boolean option, the `++` and `--` operators are shorthand for setting the option to `true` or `false`, respectively.  This happens even if you use them repeatedly, so you don't need to keep track of how many times you incremented or decremented them: `++` *always* turns the option on, and `--` *always* turns it off.
+
+Although directives are Javascript code, it's important to understand that this code runs while your markdown document is being *parsed*, not while the tests are running.  So they can only *configure* tests, not intervene in their execution.
+
+For this reason, there is also a third type of directive: `mockdown-setup`.  You can use this directive at most once in a given markdown file, and only *before* any other directives or code blocks appear in the file.  Within this directive, your Javascript code can set or change the `globals` that will be used by your tests.  It is in all other respects identical to a `mockdown-set` directive (i.e., you can use it to set other defaults for the file).
+
+There are a great many options you can set or change via directives or the mockdown API; the next section lists them all.
+
+<!--mockdown-set: --ignore -->
 
 
-## Options Reference
+## Configuring Your Tests
 
-### Options for Variables Used in Examples
+All of the options described in this section can be set or changed within a markdown document using directives (as described in the previous section).  They can also be passed in as options to `mockdown.testFiles()` and other mockdown APIs (as described in the section on "Running Your Tests", below).
 
-* `globals` - an object containing the variables to be made available to all examples.  Can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  Default: an empty object.
+### Making Variables Available in Examples
 
-* `waitName` - the name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If undefined, the `wait()` function will not be accessible from the example.  String or undefined, default: `"wait"`.
+##### `globals`
 
-* `testName` - the name the current mocha `test` object will be made available under, so you can e.g. change the test timeout.  If undefined, the test object will not be accessible from the example.  String or undefined, default: `"test"`.
+An object containing the pseudo-global variables that will initialize the `mock-globals` Environment where the code samples will execute.  Can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, unlike other options, it can't be set via `mockdown` or `mockdown-set` directives.)  Default: an empty object.
 
-### Options for Test Control Flow
+##### `waitName` 
 
-* `skip` - mark the test(s) pending in Mocha.  Boolean, default: `false`.
+The name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If this option is set to null or undefined, the `wait()` function will not be accessible from the example.  String or undefined, default: `"wait"`.
 
-* `ignore` - do not turn markdown code blocks into examples.  Can be used with a `mockdown` directive to "comment out" a single test, or a pair of `mockdown-set` directives to comment out a group of tests.   Boolean, default: `false`.
+##### `testName` 
 
-### Options for Error Formatting
+The name the current mocha `test` object will be made available under, so you can e.g. change the test timeout.  If this option is set to null or undefined, the test object will not be accessible from the example.  String or null/undefined, default: `"test"`.
 
-* `showOutput` - when a test fails due to unmatched output, show the full expected and received output.  Boolean, default: `true`.
+### Controlling Whether Tests are Included or Run
 
-* `showDiff` - when a test fails due to unmatched output, tell mocha to diff the output.  Boolean, default: `false`.
+##### `skip`
 
-* `stackDepth` - when a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an integer; can be set from 0 to `Infinity`.  Default: `0`.
+If true, mark the applicable test(s) pending in Mocha.  Boolean, default: `false`.
 
-### Options for Output and Result Matching
+##### `ignore`
 
-* `printResults`
-* `ignoreUndefined`
-* `writer`
+If true, do not turn markdown code blocks into examples until it becomes false again.  Can be used with a `mockdown` directive to "comment out" a single test, or a pair of `mockdown-set` directives to comment out a group of tests.  Boolean, default: `false`.
+
+### Controlling the Formatting of Errors
+
+##### `showOutput`
+
+When a test fails due to unmatched output, show the full expected and received output.  Boolean, default: `true`.
+
+##### `showDiff`
+
+When a test fails due to unmatched output, tell mocha to diff the output.  Boolean, default: `false`.
+
+##### `stackDepth`
+
+When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
+
+### Controlling Test Output and Expected Result Matching
+
+##### `printResults`
+
+If true, the virtual environment acts like the node REPL, printing the value of the last expression in a code sample.
+
+For example:
+
+```javascript
+42
+```
+
+>     42
+
+Boolean, default: `true`.
+
+##### `ignoreUndefined`
+
+If true, don't print an `undefined` result.  This only has any effect if `printResults` is true. Boolean, default: `true`.
+
+##### `writer`
+
+The function used to convert a REPL result to a string suitable for writing.  Only has effect if `printResults` is true.  If `writer` is `undefined`, then the Node `repl` module's current `writer` property will be used (which by default is a slightly modified version of `util.inspect()`).  Function or undefined, default: `undefined`.
+
+
+### Other Options
+
+##### `filename`
+
+The filename that will appear in stack traces for errors thrown by code or directives within the file.  Like `globals`, it can't be changed on the fly, but only initialized by passing options to the API or in a `mockdown-setup` directive.  If you don't explicitly provide it to the API, and mockdown loads the file for you, it will be set to the filename it was asked to load.  String, defaults to `"<anonymous>"` if the document was parsed from a string instead of a file.
+
+
+## Running Your Tests
+
+### The `mockdown.testFiles()` API
+
+To include documentation files in your test suites, just pass a list of filenames, the mocha suite/describe and test/it functions, and an optional options object to `mockdown.testFiles()`, like this:
+
+<!-- mockdown: ++skip -->
+
+```javascript
+var mockdown = require('mockdown');
+
+mockdown.testFiles(['README.md'], describe, it, {
+
+  printResults: false,  // disable REPL mode
+  
+  globals: {  
+
+    // supply some global vars for your code samples
+      
+    someUsefulFunction: function () {
+      // your examples will now be able to call
+      // `someUsefulFunction()` without needing
+      // to `require()` it
+      return "I'm useful!";
+    },
+
+    // you can mock or stub any global names, too!
+    
+    require: function(path) {
+        if (path === 'mymodule') return require('./');
+        else return require(path);
+    }
+  }
+
+})
+```
+
+As you can see above, the `options` argument not only lets you set any mockdown options or globals, it also lets you access *non-virtualized* code.  If you configure your globals from inside a `mockdown-setup` directive, you only have access to the virtual environment where directives run.  But when you configure them via the API, you can use functions that have access to e.g. the "real" `require()` function.
+
+
+### Controlling How/When Tests Are Added
+
+If you call `mockdown.testFiles()` from the top-level code of a module, the added test suites will be at the top level of your overall test set.  If you call it from inside a suite or `describe()` block, the suites will be nested within that block.
+
+Alternately, if you want more explicit control over the process, you can:
+
+1. Create a parser object using `parser = new mockdown.Parser(options)`
+2. Get a `mockdown.Document` using `doc = parser.parse(text)` or `doc = parser.parseFile(path)`, and
+3. Register tests and suites with mocha by calling `doc.register(suiteFn, testFn)` with `describe` and `it` or their equivalents in the mocha interface you're using.
+
+   The `.register()` method can optionally be given a mock-globals `Environment` object as a third parameter, in which case it will be used instead of creating a new one.  (But in that event, the `options.globals` won't be used; you'll have to configure the `Environment` instance yourself.)
+
+If you're parsing strings, you'll probably want to include a `filename:` entry in the options you give the parser, so that error messages will include the right filename.  And for a complete list of *all* the options you can use with any of mockdown's APIs, see the section on "[Configuring Your Tests](#configuring-your-tests)", above.
+
 
 ## Open Issues/TODO
 
