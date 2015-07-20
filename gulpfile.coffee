@@ -25,4 +25,4 @@ gulp.task 'test', ['build'], ->
         @emit 'end'
 
 gulp.task 'default', ['test'], ->
-    gulp.watch [main, 'spec.*coffee'], ['test']
+    gulp.watch [main, 'README.md', 'spec.*coffee'], ['test']

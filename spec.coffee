@@ -29,7 +29,7 @@ failSafe = (done, fn) -> ->
 
 util = require 'util'
 
-describe.only "Self-Hosting Test", ->
+describe "Self-Hosting Test", ->
     testFiles(['README.md'], describe, it)
 
 
