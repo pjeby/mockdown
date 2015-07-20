@@ -1,7 +1,5 @@
 # mocha + markdown = mockdown
 
-> Note: as of the 0.0.x releases, mockdown only supports exact output matching, and examples written in plain Javascript.  Other-language handling, ellipsis matching, and more docs are coming soon!
-
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
 But what if you could *automatically* test your examples, as part of your project's existing mocha test suites?  For that matter, what if you could do *documentation-first testing*, by writing the API docs for the API you're creating, and use the examples in them to drive your initial development?
