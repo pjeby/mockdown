@@ -1,6 +1,6 @@
 {
   "name": "mockdown",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Run your docs' examples as mocha test suites",
   "repository": "git@github.com:pjeby/mockdown.git",
   "homepage": "https://github.com/pjeby/mockdown",
