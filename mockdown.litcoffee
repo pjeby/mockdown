@@ -39,6 +39,47 @@
 
         setupStorage: ->   # no init needed
 
+## High-Level API
+
+    mockdown.testFiles = (paths, suiteFn, testFn, options) ->
+        for path in paths
+            mockdown.parseFile(path, options).register(suiteFn, testFn)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Options
 
     example_specs =
@@ -369,6 +410,12 @@ predicate returns true, or given thenable resolves or rejects.
 
 ## Parsing
 
+    mockdown.parse = (input, options) ->
+        return new mockdown.Parser(options).parse(input)
+
+    mockdown.parseFile = (path, options) ->
+        return new mockdown.Parser(options).parseFile(path)
+        
 ### The Parser
 
     class mockdown.Parser
@@ -400,15 +447,19 @@ predicate returns true, or given thenable resolves or rejects.
             new SyntaxError(message), "  at (#{@doc.filename}:#{line})"
         )
 
-
-
-
-
-
-
-
+        parseFile: (path) -> @parse require('fs').readFileSync(path, 'utf8')
 
 #### Parsing States
+
+        parse: (input) ->
+            input = mockdown.lex input if typeof input is 'string'
+            @example = undefined
+
+            state = @SCAN
+            for tok in input when tok.type isnt 'space'
+                state = state.call(this, tok)
+            state.call(this, type: 'END')
+            return @builder.end()
 
         SCAN: (tok) ->
             @parseDirective(tok, no) or @parseCode(tok) or @parseTitle(tok) or
@@ -421,7 +472,7 @@ predicate returns true, or given thenable resolves or rejects.
 
         HAVE_CODE: (tok) ->
             if out = @matchDeep(tok, 'blockquote', 'code')
-                @setExample(output: out.text)
+                @setExample(output: out.text+'\n')
             @builder.addExample @example unless @example.ignore
             @example = undefined
             return @SCAN(tok)
@@ -429,16 +480,6 @@ predicate returns true, or given thenable resolves or rejects.
         setExample: (data) ->
             return props.assign(@example, data) if @example?
             @example ?= new mockdown.Example(data, @doc)
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -553,10 +594,8 @@ numbers for tokens not embedded in a list.
 
     mockdown.lex = (src) ->
         lexer = new marked.Lexer(
-            # Specify all options in case somebody changed the global defaults;
-            # use pedantic mode so blockquoted indented code blocks will
-            # include trailing blank lines
-            gfm: yes, tables: yes, pedantic: yes, sanitize: no, smartLists: yes
+            # Specify all options in case somebody changed the global defaults
+            gfm: yes, tables: yes, pedantic: no, sanitize: no, smartLists: yes
         )
 
         current = lexer.tokens  # where tokens get inserted
@@ -564,6 +603,8 @@ numbers for tokens not embedded in a list.
         inList = no
         last_match = null       # track text and line numbers
         line = nextLine = 1
+
+
 
 
 

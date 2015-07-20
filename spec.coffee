@@ -23,14 +23,14 @@ failSafe = (done, fn) -> ->
     catch e then done(e)
 
 {
-    lex, Builder, Parser, Section, Example, Environment, Document, Waiter
+    lex, Builder, Parser, Section, Example, Environment, Document, Waiter,
+    testFiles
 } = require './'
 
 util = require 'util'
 
-
-
-
+describe.only "Self-Hosting Test", ->
+    testFiles(['README.md'], describe, it)
 
 
 
@@ -1492,7 +1492,7 @@ describe "mockdown.Parser(docOrOpts)", ->
             it "accepts output and adds it to the example", ->
                 @p.HAVE_CODE type:'blockquote', children: [
                     type: 'code', text: 'foobly-doo']
-                expect(@ex.output).to.equal 'foobly-doo'
+                expect(@ex.output).to.equal 'foobly-doo\n'
 
             it "adds .example to the current doc or section", ->
                 withSpy @p.builder, 'addExample', (ae) =>
@@ -1589,7 +1589,89 @@ describe "mockdown.Parser(docOrOpts)", ->
                 expect(e.filename).to.equal 'bar'
 
 
-    describe "Headings (.parseHeading(tok) and .finishHeadings())", ->
+
+
+
+
+
+
+
+
+    describe "Parsing API", ->
+
+        describe ".parse()", ->
+
+            it "accepts token input", ->
+                d = @p.parse [
+                    {type: "heading", depth: 1, line: 1, text: "Top Level"}
+                    {type: "code", line: 3, text: "example\n"}
+                    {type: "blockquote", line: 4, children: [
+                       {type: "code", line: 4, text: "output"}
+                    ]}
+                    {type: "code", line: 5, text: "ex2\n"}
+                ]
+                expect(d).to.equal @d
+                d.should.eql new Document children: [
+                    new Section level: 1, title: "Top Level", children: [
+                        new Example(seq: 1, line: 3, code: 'example\n',
+                            output: 'output\n')
+                        new Example(seq: 2, line: 5, code: 'ex2\n')
+                    ]
+                ]
+                expect(@p.example).to.not.exist
+
+            it "accepts string input", ->
+                d = @p.parse """\
+                # Start
+
+                <!--mockdown: ++ignore -->
+
+
+                ```ignore
+                me
+                ```
+                """
+                expect(d).to.equal @d
+                d.should.eql new Document children: [
+                    new Section level: 1, title: "Start", children: []
+                ]
+                expect(@p.example).to.not.exist
+
+
+        describe ".parseFile(path)", ->
+
+            it "calls .parse() with the file contents", ->
+                f = 'README.md'
+                t = require('fs').readFileSync(f, 'utf8')
+                withSpy @p, 'parse', (p) =>
+                    @p.parseFile(f)
+                    p.should.have.been.calledWithExactly(t)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1621,14 +1703,14 @@ describe "mockdown.lex(src)", ->
           ]
         }]
 
-    it "tracks the original whitespace in a blockquote", -> check """\
+    it "trims trailing whitespace from a blockquote", -> check """\
         >     Sample
         >
         >     Output
         >
     """, [
         type: 'blockquote', line: 1, children: [
-            type: 'code', line:1, text: 'Sample\n\nOutput\n'
+            type: 'code', line:1, text: 'Sample\n\nOutput'
         ]
     ]
 

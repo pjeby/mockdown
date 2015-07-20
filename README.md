@@ -1,6 +1,6 @@
 # mocha + markdown = mockdown
 
-> Note: as of the 0.0.x releases, this package doesn't actually *parse* markdown or handle directives yet.  You can use the `Example`, `Section`, and `Document` classes, but the parser and the mocha interface aren't quite done yet.  See the [BDD specs](https://github.com/pjeby/mockdown/tree/master/spec.coffee) for how to use the stuff that's implemented so far.
+> Note: as of the 0.0.x releases, mockdown only supports exact output matching, and examples written in plain Javascript.  Other-language handling, ellipsis matching, and more docs are coming soon!
 
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
@@ -16,6 +16,8 @@ console.log("Hello world!")
 The above is a *documentation test*, or "doctest".  You embed a code block to be run, optionally followed by a blockquoted code block representing its output.  (If you don't include the output block, it's the same as asserting the example outputs nothing.)
 
 If the output doesn't match, or an unexpected error is thrown, the test fails.  If your test completes asynchronously, you can use `wait()` to defer the test's completion until a callback, promise resolution, or other asynchronous result occurs:
+
+<!-- mockdown: --printResults -->
 
 ```javascript
 var done = wait();  // this gets a callback... but we could have also just
@@ -46,15 +48,14 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 
 ## Usage
 
-To include documentation files in your test suites, just pass a list of filenames and an options object to `mockdown.testFiles()`:
+To include documentation files in your test suites, just pass a list of filenames, the mocha suite and test functions, and an optional options object to `mockdown.testFiles()`:
 
+<!-- mockdown: ++skip -->
 ```js
 var mockdown = require('mockdown');
 
-mockdown.testFiles(['README.md'], {
-  languages: ['javascript'],  
-  suite: describe,
-  test: it
+mockdown.testFiles(['README.md'], describe, it, {
+  printResults: false  
 })
 ```
 
