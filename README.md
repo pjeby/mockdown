@@ -99,17 +99,26 @@ Or, if all else fails, the sample will end up with a title of "Example N", where
 
 ### Output Matching
 
-* Creating output with console.log/dir
-* Ellipsis matching
-* Whitespace issues
+Code samples are run in a virtual environment with a simulated console, using the [`mock-globals`](https://npmjs.com/package/mock-globals) library.  Anything that a code sample outputs via `console.log`, `console.dir`, etc. will be sent to the output record, which is then compared against the expected output at the end of the test run.
+
+If the output doesn't match the expected output, the test will fail with a detailed error message showing the actual and expected output (unless you suppress it by changing the relevant options.)
+
+By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different values to the API, or by using directives.  See the Options Reference and the sections below on directives for more details.)
 
 ### Error Handling
-* Error output
 
+You can include error output in your samples.  Only the message itself will be printed to the virtual console, unless you have a non-zero `stackDepth` option set (via the API or an in-document directive).
+
+```javascript
+throw new Error("this is the message")
+```
+>     Error: this is the message
 
 ### Asynchronous Tests
 
-If your code sample completes asynchronously, you need to use the `wait()` function.  When called without any arguments, it returns a node-style callback for completion of the test.  If you call it with an error, the error will be output to the virtual console and become part of the output for output matching purposes.  So if the error is expected, the test will still succeed.
+If your code sample completes asynchronously, you need to use the `wait()` function to defer the test's output matching until your code is finished running.
+
+When called without any arguments, `wait()` returns a node-style callback that can be invoked to finish the test.  If you call it with an error, the error will be written to the virtual console for output matching purposes.  So if the error is expected, the test will still succeed.
 
 If you are working with promises instead, you can call `wait(aPromise)` to make the test wait for the promise to finish.  As with the callback scenario, a promise rejection is treated as an error that gets written to the virtual console for output matching purposes.
 
@@ -162,4 +171,12 @@ mockdown has a *lot* of options you can manipulate with these directives.  Check
 * `ignoreUndefined`
 * `writer`
 
+## Open Issues/TODO
 
+* A single test should only be promoted to a suite if it lacks an explicit title
+* Multi-language support isn't done yet
+* No API docs except nearly 2000 lines of very verbose tests
+* Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet
+* Ellipsis and whitespace options for output matching aren't implemented
+* When an error match fails, we should probably output the original error as well as expected/actual output, instead of falling back to the original error; right now it's too hard to figure out what's wrong when a test that has an expected error is broken
+* Line numbers for fenced code blocks may be off by 1 - need to check on this
