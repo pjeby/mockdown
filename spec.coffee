@@ -27,12 +27,12 @@ failSafe = (done, fn) -> ->
     testFiles
 } = require './'
 
+languages = require('./languages')()
+
 util = require 'util'
 
 describe "Self-Hosting Test", ->
     testFiles(['README.md'], describe, it)
-
-
 
 
 
@@ -297,7 +297,7 @@ checkDefaults = (cls, isDocument=no) ->
         showDiff: [no, yes]
         filename: ['<anonymous>', 'helloWorld.js']
         stackDepth: [0, 2]
-        globals: [{}, {x:'y'}]
+        #globals: [{}, {x:'y'}]
         line: [undefined, 42]
         title: [undefined, 'An Example']
         code: [undefined, '1+1']
@@ -943,7 +943,7 @@ describe 'mockdown.Section({title:"..."})', ->
 
 describe "mockdown.Document(opts)", ->
 
-    beforeEach -> @c = new Document @o = new Example @a = globals: foo: 'bar'
+    beforeEach -> @c = new Document @o = new Example(@a), globals: foo: 'bar'
 
     describe "gets its properties from opts, including", ->
         checkDefaults(Document, yes)
@@ -975,6 +975,47 @@ describe "mockdown.Document(opts)", ->
             expect(rc).to.have.been.calledWithExactly(sf, tf, env)
             expect(env).to.be.an.instanceOf(Environment)
             expect(env.context.foo).to.exist.and.equal 'bar'
+
+
+
+
+
+
+
+    describe ".languages", ->
+
+        it "is always a copy", ->
+            @c.languages = languages
+            expect(@c.languages).to.eql languages
+            expect(@c.languages).to.not.equal languages
+
+        it "is a recursive copy", ->
+            @c.languages = languages
+            for lang in ['javascript', 'coffee-script']
+                expect(@c.languages[lang]).to.eql languages[lang], lang
+                expect(@c.languages[lang]).to.not.equal languages[lang], lang
+        
+    describe ".getEngine(lang)", ->
+
+        it "returns an engine for an alias", ->
+            expect(@c.getEngine('js')).to.equal @c.languages.javascript
+
+        it "converts lang to lower case", ->
+            expect(@c.getEngine('CoffeeScript'))
+            .to.equal @c.languages['coffee-script']
+
+        it "returns undefined for non-existent language", ->
+            expect(@c.getEngine('nosuchlang')).to.not.exist
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1151,11 +1192,12 @@ describe "mockdown.Parser(docOrOpts)", ->
         beforeEach -> @p = new Parser(@d = new Document)
 
         it "defaults to not allowing global specs", ->
-            (=> @p.directive(@d, 'globals')).should.throw(
-                TypeError, "globals can only be accessed via mockdown-setup"
-            )
-            @p.directive(@d, 'globals', 1, {globals: null})
-            .should.equal @d.globals
+            for prop in ['globals', 'languages']
+                (=> @p.directive(@d, prop)).should.throw(
+                    TypeError, prop+" can only be accessed via mockdown-setup"
+                )
+                @p.directive(@d, prop, 1, {"#{prop}": null})
+                .should.equal @d[prop]
 
         it "runs code w/filename and line number", ->
             my = this
@@ -1183,7 +1225,6 @@ describe "mockdown.Parser(docOrOpts)", ->
             @d.ellipsis.should.equal '...'
             @p.directive(@d, "ellipsis='foo'")
             @d.ellipsis.should.equal 'foo'
-
 
 
 
@@ -1348,7 +1389,7 @@ describe "mockdown.Parser(docOrOpts)", ->
                             @d, '54', 7, s = d.args[0][3]
                         )
                         s.should.have.ownProperty('globals')
-
+                        s.should.have.ownProperty('languages')
 
 
                 it "returns .SCAN state and sets .started", ->
@@ -1386,16 +1427,51 @@ describe "mockdown.Parser(docOrOpts)", ->
                         code: 'some(code)', line:42
                     )
 
-            it "sets .example.language if supplied", ->
+            it "sets .example.engine to specified language", ->
                 @pc('allTheCodez')
-                expect(@p.example?.language).to.not.equal 'C'
-                @pc('allTheCodez', lang: 'C')
-                expect(@p.example?.language).to.equal 'C'
+                expect(@p.example?.engine).to.eql @p.doc.getEngine('javascript')
+                @pc('allTheCodez', lang: 'babel')
+                expect(@p.example?.engine).to.eql @p.doc.getEngine('babel')
+
+            it "ignores languages that map to 'ignore'", ->
+
+                @pc('allTheCodez', lang: 'ignore')
+                expect(@p.example?.ignore).to.be.true
+
+                @pc('allTheCodez', lang: 'html')
+                expect(@p.example?.ignore).to.be.true
+
+            it "throws an error for unrecognized languages", ->
+                (=> @pc('foo', lang: 'bar')).should.throw SyntaxError,
+                    "Unrecognized language: bar"
 
             it "returns .HAVE_CODE state and sets .started", ->
                 expect(@p.started).to.not.be.true
                 expect(@pc('42', line:55)).to.equal @p.HAVE_CODE
                 expect(@p.started).to.be.true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     describe "Parser States", ->
@@ -1431,6 +1507,12 @@ describe "mockdown.Parser(docOrOpts)", ->
                     res = @p.SCAN tok = type:'heading', depth:3, text:'Yo!'
                     shouldHaveTried(ph, tok)
                     ph.returnValues[0].should.equal res
+
+
+
+
+
+
 
 
             it "returns .SCAN for everything else", ->
@@ -1583,7 +1665,7 @@ describe "mockdown.Parser(docOrOpts)", ->
                 d = @p.parse """\
                 # Start
 
-                ```ignore
+                ```es6
                 me
                 ```
                     too
@@ -1591,11 +1673,11 @@ describe "mockdown.Parser(docOrOpts)", ->
                 expect(d).to.equal @d
                 d.should.eql new Document children: [
                   new Section level: 1, title: "Start", children: [
-                    new Example(code: 'me', seq: 1, line: 4, language:'ignore')
+                    new Example(code: 'me', seq: 1, line: 4,
+                                engine: @d.getEngine('es6'))
                     new Example(code: 'too', seq: 2, line: 6)
                 ]]
                 expect(@p.example).to.not.exist
-
 
         describe ".parseFile(path)", ->
 

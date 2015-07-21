@@ -1,45 +1,8 @@
 # Literate Testing with Mockdown
 
-    mockdown = exports
-    mockdown.Environment = require('mock-globals').Environment
-
-    {string, object, empty} = props = require 'prop-schema'
-
-    bool = props.integer.and((v) -> v>0).or props.boolean
-    int = props.integer.and(props.nonNegative)
-    posInt = props.integer.and(props.positive)
-
-    maybe = (t) -> empty.or(t)
-
-    infinInt = int.or(
-        props.check "must be integer or Infinity",
-            (v) -> v is Infinity
-    )
-
-    mkArray = props.type (val=[]) -> [].concat(val)
-    splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
-    offset =  (code, line) -> Array(line).join('\n') + code
-
-    injectStack = (err, txt, replace=no) ->
-        stack = splitLines(err.stack)
-        stack.splice(splitLines(err.message).length,
-            (if replace then stack.length else 0), txt)
-        err.stack = stack.join('\n')
-        return err
-
-    storage_opts =
-
-        descriptorFor: (name, spec) ->
-            name = name + '_'   # store data in `name_`
-
-            get: -> this[name]
-            set: (v) -> this[name] = spec.convert(v)
-            enumerable: yes
-            configurable: yes
-
-        setupStorage: ->   # no init needed
-
 ## High-Level API
+
+    mockdown = exports
 
     mockdown.testFiles = (paths, suiteFn, testFn, options) ->
         for path in paths
@@ -76,11 +39,50 @@
 
 
 
+## Utilities
 
+    mockdown.Environment = require('mock-globals').Environment
 
+    {string, object, empty} = props = require 'prop-schema'
+    bool = props.integer.and((v) -> v>0).or props.boolean
+    int = props.integer.and(props.nonNegative)
+    posInt = props.integer.and(props.positive)
 
+    maybe = (t) -> empty.or(t)
+    infinInt = int.or(
+        props.check "must be integer or Infinity", (v) -> v is Infinity
+    )
+
+    mkArray = props.type (val=[]) -> [].concat(val)
+    splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
+    offset =  (code, line) -> Array(line).join('\n') + code
+
+    injectStack = (err, txt, replace=no) ->
+        stack = splitLines(err.stack)
+        stack.splice(splitLines(err.message).length,
+            (if replace then stack.length else 0), txt)
+        err.stack = stack.join('\n')
+        return err
+
+    storage_opts =
+        descriptorFor: (name, spec) ->
+            name = name + '_'   # store data in `name_`
+
+            get: -> this[name]
+            set: (v) -> this[name] = spec.convert(v)
+            enumerable: yes
+            configurable: yes
+        setupStorage: ->   # no init needed
+
+    recursive = props.compose(object.and(
+        (v) ->
+            for k in Object.keys(v) when props.isPlainObject(v[k])
+                v[k] = recursive(v[k]) 
+            return v))
 
 ## Options
+
+    languages = require('./languages')()
 
     example_specs =
         ellipsis:
@@ -102,23 +104,21 @@
         ingoreUndefined: bool yes, "don't output undefined results"
         writer:
             maybe(props.function) undefined, "function used to format results"
-        language: maybe(string) undefined, "name of language used"
+        defaultLanguage: maybe(string)("javascript",
+            "language to use for code without an explicit language")
+
     document_specs = props.assign {}, example_specs,
         filename: string '<anonymous>', "filename for stack traces"
         globals: object {}, "global vars for examples"
-        #languages:
-        #    object DEFAULT_LANGUAGES, "language specs", (v) ->
-        #        validateAndCloneLanguages(v)
+        languages: props.type(recursive)(languages, "language specs")
 
-    internal_specs = props.assign {}, document_specs,
-        line:
-            maybe(posInt) undefined, "line number for stack traces"
-        code:
-            maybe(string) undefined, "code of the test"
-        output:
-            string '', "expected output"
-        seq: maybe(int)   undefined, "an example's sequence #"
-        title: maybe(string) undefined, "title of the test"
+
+
+
+
+
+
+
 
 
 ## Containers
@@ -139,10 +139,28 @@
 ### Document Objects
 
     class mockdown.Document extends Container
+
         props(@, document_specs)
+
+        getEngine: (lang) -> 
+            info = @languages[lang.toLowerCase()]
+            info = @languages[info.toLowerCase()] if typeof info is "string"
+            return info
 
         register: (suite, test, env = new mockdown.Environment @globals) ->
             @registerChildren(suite, test, env)
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Section Objects
 
@@ -161,6 +179,29 @@
 
         register: (suiteFn, testFn, env) -> suiteFn @title, =>
             @registerChildren(suiteFn, testFn, env)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Builder Objects
 
@@ -204,13 +245,22 @@
 
 
 ## Running Examples
-
 ### Example Objects
 
     class mockdown.Example
-
-        props(@, internal_specs, storage_opts)
-
+        props(@, example_specs, storage_opts)
+        props(@, 
+            filename: document_specs.filename
+            engine: props.spec(languages.javascript, "language engine to use")
+            line:
+                maybe(posInt) undefined, "line number for stack traces"
+            code:
+                maybe(string) undefined, "code of the test"
+            output:
+                string '', "expected output"
+            seq: maybe(int) undefined, "an example's sequence #"
+            title: maybe(string) undefined, "title of the test"
+        )
         constructor: -> props.Base.apply(this, arguments)
 
         onAdd: (container) ->
@@ -226,23 +276,14 @@
 
         getTitle: (explicit=no)->
             return @title if @title?
-            return m[2].trim() if m = @code?.match ///
-                ^
-                \s*
-                (//|#|--|%)
-                \s*
-                ([^\n]+)
-            ///
+            return m[2].trim() if m = @code?.match(///
+                ^ \s*  (//|#|--|%)  \s* ([^\n]+)
+            ///)
             unless explicit
                 if @seq then "Example "+@seq + (
                     if @line then ' at line '+@line else ''
                 ) else "Example"
             else undefined
-
-
-
-
-
 
         runTest: (env, testObj, done) ->
 
@@ -304,18 +345,18 @@
 
         offset: (code=@code, line=@line) -> offset(code, line)
 
+        toJS = (example, env, params) -> env.run(@toJS(example), example)
+            
         evaluate: (env, params) ->
             if params
                 for k in Object.keys(params) when name = this[k+"Name"]
                     env.context[name] = params[k]
-            return env.run(@offset(), this)
+            return (@engine.evaluate ? toJS).call(@engine, this, env, params)
 
         writeError: (env, err) ->
             msgLines = splitLines(err.message).length
             stack = splitLines(err.stack).slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
-
 
 
 
@@ -495,7 +536,10 @@ predicate returns true, or given thenable resolves or rejects.
         parseCode: (tok) ->
             return unless tok.type is 'code'
             @setExample(line: tok.line, code: tok.text)
-            @example.language = tok.lang if tok.lang?
+            lang = tok.lang ? @example.defaultLanguage
+            unless @example.engine = @doc.getEngine(lang)
+                throw @syntaxError(tok.line, "Unrecognized language: " + lang)
+            @example.ignore = yes if @example.engine is 'ignore'
             @started = yes
             return @HAVE_CODE
 
@@ -523,9 +567,6 @@ predicate returns true, or given thenable resolves or rejects.
                     @directive(@doc, tok.text, tok.line, document_specs)
             @started = yes
             return @SCAN
-
-
-
 
 
 
