@@ -1658,61 +1658,20 @@ describe "mockdown.lex(src)", ->
         """, [{
           type: 'blockquote', line: 1, children: [
             {type: 'paragraph', text: 'Text.', line: 1}
-            {type: 'code', text: 'code()', line: 3}
+            {type: 'code', text: 'code()', line: 3, lang:null}
           ]
         }]
 
-    it "trims trailing whitespace from a blockquote", -> check """\
+    it "restores trailing whitespace to a blockquote", -> check """\
         >     Sample
         >
         >     Output
         >
     """, [
         type: 'blockquote', line: 1, children: [
-            type: 'code', line:1, text: 'Sample\n\nOutput'
+            type: 'code', line:1, text: 'Sample\n\nOutput\n', lang: null
         ]
     ]
-
-
-
-
-
-
-
-    it "works around marked.Lexer ignoring single blank lines", -> check """\
-        <!-- foo -->
-
-        bar
-        """, [
-          {type: 'html', text: '<!-- foo -->\n', pre:no, line:1}
-          {type: 'paragraph', text:'bar', line:3}
-        ]
-
-    it "nests lists and list items (w/o line numbers)", -> check """\
-        - Outer list
-          - Inner list
-          - More
-        - Stuff
-        """, [{
-          type: 'list', line: 1, ordered: no, children: [
-            {type: 'list_item', children: [
-              {type: 'text', text: 'Outer list'}
-              {type: 'list', ordered: no, children: [
-                {type: 'list_item', children: [
-                  {type: 'text', text: 'Inner list'}
-                ]}
-                {type: 'list_item', children: [
-                  {type: 'text', text: 'More'}
-                ]}
-              ]}
-            ]}
-            {type: 'list_item', children: [
-              {type: 'text', text: 'Stuff'}
-            ]}
-          ]
-        }]
-
-
 
 
 

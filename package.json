@@ -35,7 +35,7 @@
     "sinon": "^1.9.1"
   },
   "dependencies": {
-    "marked": "^0.3.3",
+    "mdast": "^0.27.0",
     "mock-globals": "^0.1.0",
     "prop-schema": "^0.2.2"
   }
