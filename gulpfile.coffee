@@ -8,7 +8,7 @@ package_name = JSON.parse(require('fs').readFileSync "package.json").name
 main = "#{package_name}.litcoffee"
 
 gulp.task 'build', ->
-    gulp.src(main)
+    gulp.src([main, 'languages.coffee'])
     .pipe coffee()
     #.on 'error', ->gutil.log
     .pipe gulp.dest('.')
@@ -25,4 +25,4 @@ gulp.task 'test', ['build'], ->
         @emit 'end'
 
 gulp.task 'default', ['test'], ->
-    gulp.watch [main, 'README.md', 'spec.*coffee'], ['test']
+    gulp.watch [main, 'languages.coffee', 'README.md', 'spec.*coffee'], ['test']
