@@ -7,7 +7,7 @@
   "main": "mockdown.js",
   "files": [
     "mockdown.js",
-    "console.js"
+    "languages.js"
   ],
   "scripts": {
     "test": "gulp test",
