@@ -557,10 +557,12 @@ describe "mockdown.Example(opts...)", ->
                     @gotOutput.returnValues[0]
                 )
 
-            @checkDone = (err) ->
+            @checkDone = (err, original=no) ->
                 @checkRanOnce()
                 expect(@done).to.have.been.calledOnce
-                expect(@done).to.have.been.calledWithExactly(err)
+                e = @done.args[0][0]
+                expect(@done).to.have.been.calledWithExactly(e)
+                expect(if original then e?.originalError else e).to.equal err
                 expect(@done).to.have.been.calledOn(null)
 
         it "sets testObj.callback to complete the example (for Mocha timeouts)", ->
@@ -568,8 +570,6 @@ describe "mockdown.Example(opts...)", ->
             @runTest(ex)
             expect(@done).to.not.have.been.called
             expect(@testOb.callback).to.equal(done = @env.context.done)
-
-
 
 
         it "calls done() after running synchronous code", ->
@@ -695,20 +695,20 @@ describe "mockdown.Example(opts...)", ->
                     @env.context.done()
                     @checkDone()
 
-        describe "sends thrown/async errors to done()", ->
+        describe "sends thrown/async errors (in .originalError) to done()", ->
 
             describe "when no errors were expected", ->
                 it "at synchronous completion w/error", ->
                     myErr = @env.context.myErr = new Error()
                     @runTest new Example(code: 'throw myErr', output:'42\n')
-                    @checkDone(myErr)
+                    @checkDone(myErr, yes)
 
                 it "at asynchronous completion w/ error", ->
                     ex = new Example(code: 'done = wait(); undefined', output:'')
                     @runTest(ex)
                     expect(@done).to.not.have.been.called
                     @env.context.done(err = new Error())
-                    @checkDone(err)
+                    @checkDone(err, yes)
 
             describe "when errors were expected", ->
                 it "at synchronous completion w/nonmatching error", ->
@@ -716,7 +716,7 @@ describe "mockdown.Example(opts...)", ->
                         code: 'throw err = new TypeError("foo")'
                         output: 'TypeError: bar\n'
                     )
-                    @checkDone(err = @env.context.err)
+                    @checkDone(err = @env.context.err, yes)
                     expect(err).to.be.instanceOf(TypeError)
                     expect(err.message).to.equal 'foo'
 
@@ -726,7 +726,7 @@ describe "mockdown.Example(opts...)", ->
                         output: 'TypeError: bar\n'
                     )
                     @env.context.done(err = new TypeError('foo'))
-                    @checkDone(err)
+                    @checkDone(err, yes)
                     expect(err).to.be.instanceOf(TypeError)
                     expect(err.message).to.equal 'foo'
 

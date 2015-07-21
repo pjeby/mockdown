@@ -126,7 +126,7 @@ throw new Error("this is the message")
 ```
 >     Error: this is the message
 
-If the error name or message had differed, the test would fail instead.
+If the error name or message had differed, the test would fail instead, and the error stack shown by mocha would be the stack from the first error issued by the code sample. 
 
 ### Asynchronous Tests
 
@@ -329,4 +329,3 @@ If you're parsing strings, you'll probably want to include a `filename:` entry i
 * No API docs except nearly 2000 lines of very verbose tests
 * Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet
 * Ellipsis and whitespace options for output matching aren't implemented
-* When an error match fails, we should probably output the original error as well as expected/actual output, instead of falling back to the original error; right now it's too hard to figure out what's wrong when a test that has an expected error is broken

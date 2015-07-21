@@ -1,7 +1,6 @@
 # Literate Testing with Mockdown
 
     mockdown = exports
-
     mockdown.Environment = require('mock-globals').Environment
 
     {string, object, empty} = props = require 'prop-schema'
@@ -21,9 +20,10 @@
     splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
     offset =  (code, line) -> Array(line).join('\n') + code
 
-    injectStack = (err, txt) ->
+    injectStack = (err, txt, replace=no) ->
         stack = splitLines(err.stack)
-        stack.splice(splitLines(err.message).length, 0, txt)
+        stack.splice(splitLines(err.message).length,
+            (if replace then stack.length else 0), txt)
         err.stack = stack.join('\n')
         return err
 
@@ -261,7 +261,8 @@
                     else if not err?
                         done.call(null, matchErr)
                     else
-                        done.call(null, err)
+                        matchErr.originalError = err
+                        done.call(null, injectStack(matchErr, err.stack, yes))
 
             testObj.callback = waiter.done
 
@@ -272,7 +273,6 @@
                 if waiter.waiting
                     @writeError(env, e)
                 else waiter.done(e)
-
 
 
 
@@ -608,7 +608,7 @@ extra work to maintain correct trailing whitespace and start line position.
         if (p = tok.position)?
             tok.line = p.start.line
             lineCount = p.end.line - tok.line + 1
-            reformatCode(tok, parent, lineCount) if tok.type is 'code' 
+            reformatCode(tok, parent, lineCount) if tok.type is 'code'
             delete tok.position
 
         return tok
