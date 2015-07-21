@@ -49,7 +49,7 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 
 * Works with markdown on the server instead of HTML in the browser
 * Uses standard Node console inspection utilities instead of rolling its own pretty-print facilities, and
-* Supports other languages besides plain Javascript -- including the use of multiple languages in the same document
+* Supports other languages besides plain Javascript -- including the use of multiple languages in the same document (Babel and CoffeeScript out of the box, but you can supply your own engine(s) via the options)
 * Uses mocha for test running and reporting, allowing integration into existing test suites
 
 #### Contents
@@ -67,10 +67,12 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
   * [Controlling Whether Tests are Included or Run](#controlling-whether-tests-are-included-or-run)
   * [Controlling the Formatting of Errors](#controlling-the-formatting-of-errors)
   * [Controlling Test Output and Expected Result Matching](#controlling-test-output-and-expected-result-matching)
+  * [Language Options](#language-options)
   * [Other Options](#other-options)
 * [Running Your Tests](#running-your-tests)
   * [The `mockdown.testFiles()` API](#the-mockdowntestfiles-api)
   * [Controlling How/When Tests Are Added](#controlling-howwhen-tests-are-added)
+  * [Using Languages Besides Javascript](#using-languages-besides-javascript)
 * [Open Issues/TODO](#open-issuestodo)
 
 <!-- toc stop -->
@@ -79,6 +81,8 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
 ## Writing Your Tests
 
 For the most part, tests are free-form.  Just insert code blocks, optionally followed by blockquoted code blocks (`> `-prefaced) to specify expected output.  Markdown section headings delineate mocha suites, with the heading levels being used to determine the nesting structure, and the section titles used to name the suites.
+
+By default, code is assumed to be plain Javascript that can be executed by the engine mockdown is running on, unless you use a fenced code block with an explicit language declaration.  (You can change this default, add language engines, etc. using directives and options, which are discussed in later sections below.)  
 
 Both the sample code and the expected output can be either Github-style "fenced" code blocks or traditional 4-space indented code blocks.  Remember, however, that blockquotes require a space after the `>`, so if you are using indented code blocks for expected output, you will need **5** spaces between the `>` and the beginning of expected output.  That is:
 
@@ -187,7 +191,7 @@ When used with a boolean option, the `++` and `--` operators are shorthand for s
 
 Although directives are Javascript code, it's important to understand that this code runs while your markdown document is being *parsed*, not while the tests are running.  So they can only *configure* tests, not intervene in their execution.
 
-For this reason, there is also a third type of directive: `mockdown-setup`.  You can use this directive at most once in a given markdown file, and only *before* any other directives or code blocks appear in the file.  Within this directive, your Javascript code can set or change the `globals` that will be used by your tests.  It is in all other respects identical to a `mockdown-set` directive (i.e., you can use it to set other defaults for the file).
+For this reason, there is also a third type of directive: `mockdown-setup`.  You can use this directive at most once in a given markdown file, and only *before* any other directives or code blocks appear in the file.  Within this directive, your Javascript code can set or change the `globals` and `languages` that will be used by your tests.  It is in all other respects identical to a `mockdown-set` directive (i.e., you can use it to set other defaults for the file).
 
 There are a great many options you can set or change via directives or the mockdown API; the next section lists them all.
 
@@ -202,64 +206,113 @@ All of the options described in this section can be set or changed within a mark
 
 ##### `globals`
 
-An object containing the pseudo-global variables that will initialize the `mock-globals` Environment where the code samples will execute.  Can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, unlike other options, it can't be set via `mockdown` or `mockdown-set` directives.)  Default: an empty object.
+Object, default: `{}`.
+
+An object containing the pseudo-global variables that will initialize the `mock-globals` Environment where the code samples will execute.  Can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, unlike other options, it can't be set via `mockdown` or `mockdown-set` directives.)  
 
 ##### `waitName` 
 
-The name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If this option is set to null or undefined, the `wait()` function will not be accessible from the example.  String or null/undefined, default: `"wait"`.
+String or null/undefined, default: `"wait"`
+
+The name the `wait()` function is made available under.  You can change this in order to avoid conflict with a name in your examples.  If this option is set to null or undefined, the `wait()` function will not be accessible from the example.
 
 ##### `testName` 
 
-The name the current mocha `test` object will be made available under, so you can e.g. change the test timeout.  If this option is set to null or undefined, the test object will not be accessible from the example.  String or null/undefined, default: `"test"`.
+String or null/undefined, default: `"test"`
+
+The name the current mocha `test` object will be made available under, so you can e.g. change the test timeout.  If this option is set to null or undefined, the test object will not be accessible from the example.
 
 ### Controlling Whether Tests are Included or Run
 
 ##### `skip`
 
-If true, mark the applicable test(s) pending in Mocha.  Boolean, default: `false`.
+Boolean, default: `false`
+
+If true, mark the applicable test(s) pending in Mocha.
 
 ##### `ignore`
 
-If true, do not turn markdown code blocks into examples until it becomes false again.  Can be used with a `mockdown` directive to "comment out" a single test, or a pair of `mockdown-set` directives to comment out a group of tests.  Boolean, default: `false`.
+Boolean, default: `false`
+
+If true, do not turn markdown code blocks into examples until it becomes false again.  Can be used with a `mockdown` directive to "comment out" a single test, or a pair of `mockdown-set` directives to comment out a group of tests.
 
 ### Controlling the Formatting of Errors
 
 ##### `showOutput`
 
-When a test fails due to unmatched output, show the full expected and received output.  Boolean, default: `true`.
+Boolean, default: `true`
+
+When a test fails due to unmatched output, show the full expected and received output.
 
 ##### `showDiff`
 
-When a test fails due to unmatched output, tell mocha to diff the output.  Boolean, default: `false`.
+Boolean, default: `false`
+
+When a test fails due to unmatched output, tell mocha to diff the output.  
 
 ##### `stackDepth`
 
-When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
+Integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
+
+When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an 
 
 ### Controlling Test Output and Expected Result Matching
 
 ##### `printResults`
 
+Boolean, default: `true`.
+
 If true, the virtual environment acts like the node REPL, printing the value of the last expression in a code sample.
 
 For example:
 
-```javascript
+```js
 6 * 7
 ```
 
 >     42
 
-Boolean, default: `true`.
-
 ##### `ignoreUndefined`
 
-If true, don't print an `undefined` result.  This only has any effect if `printResults` is true. Boolean, default: `true`.
+Boolean, default: `true`.
+
+If true, don't print an `undefined` result.  This only has any effect if `printResults` is true. 
 
 ##### `writer`
 
-The function used to convert a REPL result to a string suitable for writing.  Only has effect if `printResults` is true.  If `writer` is `undefined`, then the Node `repl` module's current `writer` property will be used (which by default is a slightly modified version of `util.inspect()`).  Function or undefined, default: `undefined`.
+Function or undefined, default: `undefined`
 
+The function used to convert a REPL result to a string suitable for writing.  Only has effect if `printResults` is true.  If `writer` is `undefined`, then the Node `repl` module's current `writer` property will be used (which by default is a slightly modified version of `util.inspect()`).
+
+### Language Options
+
+##### `defaultLanguage`
+
+String, default `"javascript"`
+
+The name of the language that should be used when a code block doesn't have an explicit language.  That is, the language to be used for indented code blocks, and fenced blocks without a specified language.  You can also set this to `"ignore"` to ignore such code blocks and not create tests for them.
+
+Language names are case-insensitive, at least in the sense that they are converted `toLowerCase()` before being looked up in the `languages` mapping.  
+
+##### `languages`
+
+Object, default: `require('mockdown/languages')()`
+
+An object whose keys are all-lowercase language names, and whose values are language aliases or language engines.  A language alias is just a string that names the engine to be used, so for example if you set `languages.es7 = "babel"`, this would tell mockdown to use Babel to compile code blocks with a language of `es7`.  (Note: aliases are not recursive; they must name a language engine, not another alias.  They can, however, be "ignore", which indicates blocks of that language should be ignored.)
+
+A language engine is an object with one required property, `toJS:`, which must be a function accepting a `mockdown.Example` object and returning a string of Javascript.  Usually, language engines will also include an `options:` property that will be used to send compiler options to the underlying language.  (For example, you can set `languages.babel.options.stage` to change the stability level in use).
+
+Note that the `languages` option can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, unlike other options, it can't be set via `mockdown` or `mockdown-set` directives.)
+
+Currently, the default mapping for this option includes language engines for:
+
+* `babel` (aliases `babel`, `es7`)
+* `coffee-script` (aliases `coffee`, `coffeescript`)
+* `javascript` (alias: `js`)
+
+And `ignore` aliases for `html`, `markdown`, and `text`.
+
+You can add your own aliases and engines by in-place modification.
 
 ### Other Options
 
@@ -322,10 +375,16 @@ Alternately, if you want more explicit control over the process, you can:
 
 If you're parsing strings, you'll probably want to include a `filename:` entry in the options you give the parser, so that error messages will include the right filename.  And for a complete list of *all* the options you can use with any of mockdown's APIs, see the section on "[Configuring Your Tests](#configuring-your-tests)", above.
 
+### Using Languages Besides Javascript
+
+Currently, multi-language support is still experimental.  Most JS transpilers expect to be producing an entire module at a time, rather than a collection of code fragments to be run REPL-style.  So although it "works", you may run into language-specific compilation issues, which may be compounded by the fact that you will only see the original source in error messages, not the compiled source.  (There should probably be an option for that!)
+
+(Also, note that although mockdown includes engines for Babel and CoffeeScript, it does not declare dependencies on them, as it is intended to use *your* installation of the relevant compiler modules.) 
+
 
 ## Open Issues/TODO
 
-* Multi-language support isn't done yet
+* Multi-language support is still experimental
 * No API docs except nearly 2000 lines of very verbose tests
 * Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet
 * Ellipsis and whitespace options for output matching aren't implemented
