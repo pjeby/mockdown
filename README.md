@@ -2,7 +2,7 @@
 
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
-But what if you could *automatically* test your examples, as part of your project's existing mocha test suites?  For that matter, what if you could do *documentation-first testing*, by writing the API docs for the API you're creating, and use the examples in them to drive your initial development?
+But what if you could *automatically* test your examples, as part of your project's existing mocha test suites?  For that matter, what if you could do *documentation-first testing*, by writing the API docs for the API you're creating, and using the examples in them as tests to drive your initial development?
 
 Mockdown lets you do all of these things, and more, by testing code samples embedded in markdown files, like this:
 
@@ -37,7 +37,7 @@ Section headings in your markdown files define mocha suites, so your test suites
 
 <!-- mockdown: ++ignore -->
 
-```html
+```markdown
 <!-- mockdown: ++skip -->
 ```
 
@@ -112,6 +112,9 @@ If the output doesn't match the expected output, the corresponding test will fai
 
 By default, the last value evaluated in a code sample is printed, in much the same way as the Node REPL, with `undefined` results remaining silent.  You can change this behavior, however, using the `printResults` and `ignoreUndefined` options. (Either by passing different `options` to the API, or by using directives, as will be described in later sections below.)
 
+(Note: `mock-globals` is **not** a secure execution environment.  Do not use `mockdown` to process files from untrusted sources, or you will be *very* sorry!)
+ 
+
 ### Error Output
 
 You can include error output in your samples, if the purpose of the example is to show an error.  Only the error message itself will be printed to the virtual console, unless you have a non-zero `stackDepth` option set (via the API or an in-document directive).
@@ -143,19 +146,19 @@ Sometimes, you need to have mocha skip a test and mark it pending.  Other times,
 
 <!--mockdown-set: ++ignore -->
 
-```html
+```markdown
 <!-- mockdown: ++skip -->
 ```
 
 Or to treat the next code block as a non-test code block, you can use:
 
-```html
+```markdown
 <!-- mockdown: ++ignore -->
 ```
 
 If you want to mark *multiple* tests to skip or code blocks to ignore, you can bracket them with a pair of `mockdown-set` directives, like so:
 
-```
+```markdown
 <!-- mockdown-set: ++skip -->
 
 Tests between these directives will be marked
@@ -174,7 +177,7 @@ So, anything you set with `mockdown-set` will *stay* set, until you change it wi
 
 Directives aren't limited to toggling boolean flags like `skip` and `ignore`.  You can also set non-boolean options values (e.g. `<!-- mockdown: stackDepth = 3 -->`) and even combine multiple option changes in a single directive, e.g.:
 
-```html
+```markdown
 <!-- mockdown: stackDepth=3; waitName="defer"; ++showDiff -->
 ```
 
@@ -242,7 +245,7 @@ If true, the virtual environment acts like the node REPL, printing the value of 
 For example:
 
 ```javascript
-42
+6 * 7
 ```
 
 >     42
