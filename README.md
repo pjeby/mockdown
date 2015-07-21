@@ -6,7 +6,7 @@ But what if you could *automatically* test your examples, as part of your projec
 
 Mockdown lets you do all of these things, and more, by testing code samples embedded in markdown files, like this:
 
-```javascript
+```js
 // "Hello world" Sample
 
 console.log("Hello world!")
@@ -19,7 +19,7 @@ If the output doesn't match, or an unexpected error is thrown, the test fails.  
 
 <!-- mockdown: --printResults -->
 
-```javascript
+```js
 // Using wait() with setTimeout()
 
 var done = wait();  // wait() with no arguments returns a callback... but we
@@ -86,11 +86,12 @@ By default, code is assumed to be plain Javascript that can be executed by the e
 
 Both the sample code and the expected output can be either Github-style "fenced" code blocks or traditional 4-space indented code blocks.  Remember, however, that blockquotes require a space after the `>`, so if you are using indented code blocks for expected output, you will need **5** spaces between the `>` and the beginning of expected output.  That is:
 
->     >    this is not an expected output block!
-
-----
-
->     >     but *this* is!    
+```markdown
+>    this is not an expected output block!
+```
+```markdown
+>     but this is!    
+```
 
 If you don't include all five spaces, the markdown parser will see the blockquote as regular text, so mockdown won't see it as an expected-output block, and your test will fail, despite it looking okay to the naked eye.
 
@@ -98,7 +99,7 @@ If you don't include all five spaces, the markdown parser will see the blockquot
 
 If your code sample's first non-blank line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language, it'll be used as the test's title, e.g.:
 
-```javascript
+```js
 // This will show up as the mocha test title
 
 { /* We're not testing anything here except the test title */ }
@@ -125,7 +126,7 @@ You can include error output in your samples, if the purpose of the example is t
 
 So, the following example throws an error, but since an error is the *intended* result, the **test** will be still considered successful: 
 
-```javascript
+```js
 throw new Error("this is the message")
 ```
 >     Error: this is the message
@@ -254,7 +255,7 @@ When a test fails due to unmatched output, tell mocha to diff the output.
 
 Integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
 
-When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.)  Must be an 
+When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.) 
 
 ### Controlling Test Output and Expected Result Matching
 
@@ -298,27 +299,29 @@ Language names are case-insensitive, at least in the sense that they are convert
 
 Object, default: `require('mockdown/languages')()`
 
-An object whose keys are all-lowercase language names, and whose values are language aliases or language engines.  A language alias is just a string that names the engine to be used, so for example if you set `languages.es7 = "babel"`, this would tell mockdown to use Babel to compile code blocks with a language of `es7`.  (Note: aliases are not recursive; they must name a language engine, not another alias.  They can, however, be "ignore", which indicates blocks of that language should be ignored.)
+An object whose keys are all-lowercase language names, and whose values are language aliases or language engines.  A language alias is just a string that names the engine to be used, so for example if you set `languages.es7 = "babel"`, this would tell mockdown to use Babel to compile code blocks with a language of `es7`.
 
-A language engine is an object with one required property, `toJS:`, which must be a function accepting a `mockdown.Example` object and returning a string of Javascript.  Usually, language engines will also include an `options:` property that will be used to send compiler options to the underlying language.  (For example, you can set `languages.babel.options.stage` to change the stability level in use).
+(Note: aliases are not recursive; they must name a language engine, not another alias.  They can, however, be set to `"ignore"`, which indicates blocks of that language should be ignored and not used as tests.)
 
-Note that the `languages` option can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, unlike other options, it can't be set via `mockdown` or `mockdown-set` directives.)
+A language engine is an object with one required property, `toJS:`, which must be a function accepting a `mockdown.Example` object and returning a string of Javascript.  Usually, language engines will also include an `options:` property that will be used to send compiler options to the underlying language.  (For example, you can set `languages.babel.options.stage` to change the stability level used for Babel examples.)
+
+Note that the `languages` option can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, like `globals`, it can't be set via `mockdown` or `mockdown-set` directives.)
 
 Currently, the default mapping for this option includes language engines for:
 
-* `babel` (aliases `babel`, `es7`)
-* `coffee-script` (aliases `coffee`, `coffeescript`)
-* `javascript` (alias: `js`)
+* `babel` (with `babel` and `es6` as aliases)
+* `coffee-script` (with `coffee` and `coffeescript` as aliases)
+* `javascript` (with `js` as an alias)
 
-And `ignore` aliases for `html`, `markdown`, and `text`.
+And it includes `html`, `markdown`, and `text` as aliases for `ignore`.
 
-You can add your own aliases and engines by in-place modification.
+You can add your own aliases and engines to this mapping by in-place modification in `mockdown-setup` code, or by passing a replacement object as a `languages:` option to the API.  (You can also call `require('mockdown/languages')()` to get a copy of the defaults that you can then modify and pass in.)
 
 ### Other Options
 
 ##### `filename`
 
-The filename that will appear in stack traces for errors thrown by code or directives within the file.  Like `globals`, it can't be changed on the fly, but only initialized by passing options to the API or in a `mockdown-setup` directive.  If you don't explicitly provide it to the API, and mockdown loads the file for you, it will be set to the filename it was asked to load.  String, defaults to `"<anonymous>"` if the document was parsed from a string instead of a file.
+The filename that will appear in stack traces for errors thrown by code or directives within the file.  Like `globals` and `languages`, it can't be changed on the fly, but only initialized by passing options to the API or in a `mockdown-setup` directive.  If you don't explicitly provide it to the API, and mockdown loads the file for you, it will be set to the filename it was asked to load.  String, defaults to `"<anonymous>"` if the document was parsed from a string instead of a file.
 
 
 ## Running Your Tests
@@ -329,7 +332,7 @@ To include documentation files in your test suites, just pass a list of filename
 
 <!-- mockdown: ++skip -->
 
-```javascript
+```js
 var mockdown = require('mockdown');
 
 mockdown.testFiles(['README.md'], describe, it, {
@@ -379,12 +382,12 @@ If you're parsing strings, you'll probably want to include a `filename:` entry i
 
 Currently, multi-language support is still experimental.  Most JS transpilers expect to be producing an entire module at a time, rather than a collection of code fragments to be run REPL-style.  So although it "works", you may run into language-specific compilation issues, which may be compounded by the fact that you will only see the original source in error messages, not the compiled source.  (There should probably be an option for that!)
 
-(Also, note that although mockdown includes engines for Babel and CoffeeScript, it does not declare dependencies on them, as it is intended to use *your* installation of the relevant compiler modules.) 
+(Also, note that although mockdown includes engines for Babel and CoffeeScript, it does not declare dependencies on them, as by design it should use *your* installation of the relevant compiler modules.  That way, it will always be in sync with your project's version of the associated compiler.) 
 
 
 ## Open Issues/TODO
 
-* Multi-language support is still experimental
+* Multi-language support is still experimental, and there aren't any docs yet on how to create an engine correctly.
 * No API docs except nearly 2000 lines of very verbose tests
 * Since it hasn't really been used yet, there are probably lots of syntax corner cases that haven't been encountered yet
 * Ellipsis and whitespace options for output matching aren't implemented
