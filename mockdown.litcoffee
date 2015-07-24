@@ -460,11 +460,9 @@ predicate returns true, or given thenable resolves or rejects.
 
     class mockdown.Parser
         constructor:  ->
-            if arguments.length == 1 and
-                arguments[0] instanceof mockdown.Document
-                    @doc = arguments[0]
-            else @doc = new mockdown.Document(arguments...)
+            @doc = new mockdown.Document(arguments...)
             @builder = new mockdown.Builder(@doc)
+            @example = undefined
 
         match: (tok, pred) ->
             if typeof pred is 'string'
@@ -490,17 +488,22 @@ predicate returns true, or given thenable resolves or rejects.
             @doc.filename = path if @doc.filename is '<anonymous>'
             @parse require('fs').readFileSync(path, 'utf8')
 
+
+
 #### Parsing States
 
         parse: (input) ->
             input = mockdown.lex input if typeof input is 'string'
-            @example = undefined
 
-            state = @SCAN
+            # make a copy so our options aren't mutated
+            parser = new @constructor(@doc)
+
+            state = parser.SCAN
             for tok in input when tok.type isnt 'space'
-                state = state.call(this, tok)
-            state.call(this, type: 'END')
-            return @builder.end()
+                state = state.call(parser, tok)
+
+            state.call(parser, type: 'END')
+            return parser.builder.end()
 
         SCAN: (tok) ->
             @parseDirective(tok, no) or @parseCode(tok) or
@@ -521,9 +524,6 @@ predicate returns true, or given thenable resolves or rejects.
         setExample: (data) ->
             return props.assign(@example, data) if @example?
             @example ?= new mockdown.Example(data, @doc)
-
-
-
 
 
 

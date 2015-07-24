@@ -1105,7 +1105,7 @@ describe "mockdown.Builder(container)", ->
 
 
 
-describe "mockdown.Parser(docOrOpts)", ->
+describe "mockdown.Parser(opts)", ->
 
     mkTitle = (text) ->
         type: 'list', ordered: no, children: [
@@ -1115,14 +1115,11 @@ describe "mockdown.Parser(docOrOpts)", ->
     mkDirective = (suffix, text, line=1) ->
         type: 'html', text: "<!-- mockdown#{suffix}:#{text}-->", line:line
 
-    beforeEach -> @p = new Parser(@d = new Document)
+    beforeEach -> @d = (@p = new Parser).doc
 
-    describe ".doc", ->
+    describe ".opts", ->
 
-        it "is docOrOpts if Document", ->
-            expect(@p.doc).to.equal @d
-
-        it "gets properties from opts... otherwise", ->
+        it "gets properties from opts...", ->
             expect(new Parser({filename: 'foo.md'}, {stackDepth:20}).doc)
             .to.deep.equal new Document(filename: 'foo.md', stackDepth: 20)
 
@@ -1133,6 +1130,9 @@ describe "mockdown.Parser(docOrOpts)", ->
 
         it "whose .container is the .doc", ->
             expect(@p.builder.container).to.equal @d
+
+
+
 
 
 
@@ -1651,7 +1651,7 @@ describe "mockdown.Parser(docOrOpts)", ->
                     ]}
                     {type: "code", line: 5, text: "ex2\n"}
                 ]
-                expect(d).to.equal @d
+                expect(d).to.not.equal @d
                 d.should.eql new Document children: [
                     new Section level: 1, title: "Top Level", children: [
                         new Example(seq: 1, line: 3, code: 'example\n',
@@ -1670,7 +1670,7 @@ describe "mockdown.Parser(docOrOpts)", ->
                 ```
                     too
                 """
-                expect(d).to.equal @d
+                expect(d).to.not.equal @d
                 d.should.eql new Document children: [
                   new Section level: 1, title: "Start", children: [
                     new Example(code: 'me', seq: 1, line: 4,
@@ -1679,6 +1679,19 @@ describe "mockdown.Parser(docOrOpts)", ->
                 ]]
                 expect(@p.example).to.not.exist
 
+            it "returns a new Document each time", ->
+                d1 = @p.parse("Doc 1")
+                d2 = @p.parse("Doc 2")
+                expect(d1).to.not.equal @d
+                expect(d1).to.not.equal d2
+
+            it "doesn't change defaults between documents", ->
+                d1 = @p.parse("<!-- mockdown-set: ++skip -->")
+                d2 = @p.parse("Doc 2")
+                expect(@d.skip).to.be.false
+                expect(d1.skip).to.be.true
+                expect(d2.skip).to.be.false
+                
         describe ".parseFile(path)", ->
 
             it "calls .parse() with the file contents", ->
@@ -1690,19 +1703,6 @@ describe "mockdown.Parser(docOrOpts)", ->
 
             it "sets the .filename of the document if not set", ->
                 expect(@p.parseFile(p='README.md').filename).to.equal p
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
