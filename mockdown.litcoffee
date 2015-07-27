@@ -39,7 +39,7 @@
 
 
 
-## Utilities
+## Utilities and Types
 
     mockdown.Environment = require('mock-globals').Environment
 
@@ -77,8 +77,13 @@
     recursive = props.compose(object.and(
         (v) ->
             for k in Object.keys(v) when props.isPlainObject(v[k])
-                v[k] = recursive(v[k]) 
+                v[k] = recursive(v[k])
             return v))
+
+    pattern = props.function.or (val) ->
+        if typeof val is "string" then (arg) -> ~arg.indexOf(val)
+        else if val instanceof RegExp then (arg) -> arg.match(val)
+        else props.check("must be string, function, or regexp").converter(val)           
 
 ## Options
 
@@ -97,6 +102,7 @@
         skip:   bool no, "mark the test pending?"
         ignore: bool no, "treat the example as a non-test"
 
+        waitForOutput: maybe(pattern) undefined, "output to stop on"
         waitName: maybe(string) 'wait', "name of 'wait()' function"
         testName: maybe(string) 'test', "name of current mocha test object"
 
@@ -111,12 +117,6 @@
         filename: string '<anonymous>', "filename for stack traces"
         globals: object {}, "global vars for examples"
         languages: props.type(recursive)(languages, "language specs")
-
-
-
-
-
-
 
 
 
@@ -142,7 +142,7 @@
 
         props(@, document_specs)
 
-        getEngine: (lang) -> 
+        getEngine: (lang) ->
             info = @languages[lang.toLowerCase()]
             info = @languages[info.toLowerCase()] if typeof info is "string"
             return info
@@ -249,7 +249,7 @@
 
     class mockdown.Example
         props(@, example_specs, storage_opts)
-        props(@, 
+        props(@,
             filename: document_specs.filename
             engine: props.spec(languages.javascript, "language engine to use")
             line:
@@ -294,6 +294,7 @@
                     done(err) if err
                 else
                     finished = yes
+                    @unwatch(env) if @waitForOutput
                     @writeError(env, err) if err
                     matchErr = @mismatch(env.getOutput())
 
@@ -308,6 +309,7 @@
             testObj.callback = waiter.done
 
             try
+                @watch(env, @waitForOutput, waiter.wait()) if @waitForOutput
                 @evaluate(env, wait: waiter.wait, test: testObj)
                 waiter.done() unless waiter.waiting
             catch e
@@ -315,16 +317,14 @@
                     @writeError(env, e)
                 else waiter.done(e)
 
+        watch: (env, pred, done) ->
+            pred = pattern.converter(pred)
+            os = env.outputStream; os.write = (arg) =>
+                os.push(arg)
+                if pred(arg.toString())
+                    @unwatch(env); process.nextTick(done)
 
-
-
-
-
-
-
-
-
-
+        unwatch: (env) -> os = env.outputStream; os.write = os.push
 
         mismatch: (output) ->
             return if output is @output
@@ -346,7 +346,7 @@
         offset: (code=@code, line=@line) -> offset(code, line)
 
         toJS = (example, env, params) -> env.run(@toJS(example), example)
-            
+
         evaluate: (env, params) ->
             if params
                 for k in Object.keys(params) when name = this[k+"Name"]

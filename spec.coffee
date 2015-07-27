@@ -464,21 +464,62 @@ describe "mockdown.Example(opts...)", ->
             .to.deep.equal err.stack.split('\n').slice(0, 4).concat([''])
 
 
+    describe ".watch(env, pred, done)", ->
 
+        beforeEach ->
+            @env = new Environment
+            @os = @env.outputStream
+            @ex = new Example
+            @pred = spy.named 'pred', ->
 
+            @check = (bad, good, pred) ->
+                withSpy process, 'nextTick', (nt) =>
+                    withSpy @ex, 'unwatch', (uw) =>
+                        @ex.watch(@env, pred, d = spy.named 'done', ->)
 
+                        @os.write(Buffer(bad))
+                        nt.should.not.be.called
+                        uw.should.not.be.called
 
+                        @os.write(Buffer(good))
+                        nt.should.be.calledOnce.and.calledWithExactly(same(d))
+                        uw.should.be.calledOnce
 
+                        @os.write(Buffer(bad))
+                        @os.write(Buffer(good))
+                        nt.should.be.calledOnce
+                        uw.should.be.calledOnce
 
+        it "invokes pred(text) for each write call", ->
+            withSpy @os, 'push', (push) =>
 
+                @ex.watch(@env, @pred, ->)
 
+                @os.write(b1 = Buffer(t1 = "test1"))
+                push.should.be.calledWithExactly(b1)
+                @pred.should.be.calledWithExactly(t1)
 
+                @os.write(b2 = Buffer(t2 = "test2"))
+                push.should.be.calledWithExactly(b2)
+                @pred.should.be.calledWithExactly(t2)
 
+        describe "invokes done() on next tick", ->
 
+            it "if pred(text) returns true", ->
+                @check "bad", "good", (t) -> t == 'good'
 
+            it "if text matches pred (RegExp)", ->
+                @check "bad", "good", /od$/
 
+            it "if text contains pred (string)", ->
+                @check "bad", "good", "oo"
 
+    describe ".unwatch(env)", ->
 
+        it "restores env.outputStream.write to Array::push", ->
+            env = new Environment; os = env.outputStream; os.write = null
+            (new Example).unwatch(env)
+            os.write.should.equal Array::push
 
 
 
@@ -592,26 +633,26 @@ describe "mockdown.Example(opts...)", ->
             @env.context.done()
             @checkDone()
 
-        describe "only calls done() w/success once", ->
-
-            it "when called synchronously", ->
-                ex = new Example(code: 'done = wait(); done(); undefined', output:'')
+        it "calls .watch()/unwatch() if .watchForOutput", (done) ->
+            ex = new Example(code: 'console.log("foo")', output:'foo\n',
+                waitForOutput: 'foo')
+            withSpy ex, 'watch', (w) => withSpy ex, 'unwatch', (uw) =>
                 @runTest(ex)
-                @env.context.done()
-                @checkDone()
-
-            it "when called asynchronously", ->
-                ex = new Example(code: 'done = wait(); undefined', output:'')
-                @runTest(ex)
+                w.should.be.calledWithExactly(@env, ex.waitForOutput, @testOb.callback)
+                @done.should.not.have.been.called
+                setImmediate failSafe done, =>
+                    @done.should.have.been.called
+                    uw.should.be.calledWithExactly(@env)
+                    done()
+            
+        it "records synchronous errors when waiting for async results", ->
+                @runTest new Example(
+                    code: 'done = wait(); throw new TypeError("bar")'
+                    output: 'TypeError: bar\n'
+                )
                 expect(@done).to.not.have.been.called
                 @env.context.done()
-                @env.context.done()
                 @checkDone()
-
-
-
-
-
 
         it "forwards even late errors to done()", ->
             ex = new Example(code: 'done = wait(); undefined', output:'')
@@ -624,18 +665,21 @@ describe "mockdown.Example(opts...)", ->
             expect(@done).to.have.been.calledWith(err)
             @checkRanOnce()
 
-        it "records synchronous errors when waiting for async results", ->
-                @runTest new Example(
-                    code: 'done = wait(); throw new TypeError("bar")'
-                    output: 'TypeError: bar\n'
-                )
+        describe "only calls done() w/success once", ->
+            it "when called synchronously", ->
+                ex = new Example(code: 'done = wait(); done(); undefined', output:'')
+                @runTest(ex)
+                @env.context.done()
+                @checkDone()
+            it "when called asynchronously", ->
+                ex = new Example(code: 'done = wait(); undefined', output:'')
+                @runTest(ex)
                 expect(@done).to.not.have.been.called
+                @env.context.done()
                 @env.context.done()
                 @checkDone()
 
-
         describe "suppresses errors that match expected output", ->
-
             it "when thrown synchronously", ->
                 @runTest new Example(
                     code: 'throw new TypeError("foo")'
@@ -650,9 +694,6 @@ describe "mockdown.Example(opts...)", ->
                 expect(@done).to.not.have.been.called
                 @env.context.done(new TypeError('foo'))
                 @checkDone()
-
-
-
 
         describe "sends mismatch errors to done", ->
 
@@ -994,7 +1035,7 @@ describe "mockdown.Document(opts)", ->
             for lang in ['javascript', 'coffee-script']
                 expect(@c.languages[lang]).to.eql languages[lang], lang
                 expect(@c.languages[lang]).to.not.equal languages[lang], lang
-        
+
     describe ".getEngine(lang)", ->
 
         it "returns an engine for an alias", ->
@@ -1691,7 +1732,7 @@ describe "mockdown.Parser(opts)", ->
                 expect(@d.skip).to.be.false
                 expect(d1.skip).to.be.true
                 expect(d2.skip).to.be.false
-                
+
         describe ".parseFile(path)", ->
 
             it "calls .parse() with the file contents", ->

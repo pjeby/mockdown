@@ -1,5 +1,7 @@
 # mocha + markdown = mockdown
 
+> **New** in 0.3.0: the [`waitForOutput`](#waitforoutput) option lets you match console output to end an asynchronous test, without needing to call `wait()` in the test itself.  See the section below on [asynchronous tests](#asynchronous-tests) for an example.
+
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
 But what if you could *automatically* test your examples, as part of your project's existing mocha test suites?  For that matter, what if you could do *documentation-first testing*, by writing the API docs for the API you're creating, and using the examples in them as tests to drive your initial development?
@@ -145,9 +147,23 @@ If you have neither a callback-taking function or a promise, you can still use `
 
 (By the way, if you need `wait()` to have a different name because you need to use the name `wait` for something else in your examples, you can rename it by changing the `waitName` option in a directive, or in the options you supply to the mockdown API.  See the sections below for more details.)
 
+For some documentation, including an explicit `wait()` call may be intrusive; for these situations, you can use the `waitForOutput` option in a directive.  For example, the following test is configured to wait for the string `"done"` to appear in the output, using the directive `<!-- mockdown: waitForOutput = "done" -->`:
+
+<!-- mockdown: waitForOutput = "done"; --printResults -->
+
+```js
+setTimeout(function(){ console.log("done"); }, 10);
+```
+>     done
+
+(The main downside to this approach is that if the desired string never appears in the output, the test will time out before any output comparison is done.)
+
+For more on how to use directives to configure options, see the next few sections.
+
+
 ### Controlling Test Execution with Directives
 
-Sometimes, you need to have mocha skip a test and mark it pending.  Other times, you may have code blocks in your documentation that you don't want to treat as tests at all!  You can use **directives** to control these things, as well as to set other options like `waitName` or `printResults`.   For example, to skip a single test and mark it pending, you can use:
+Sometimes, you need to have mocha skip a test and mark it pending.  Other times, you may have code blocks in your documentation that you don't want to treat as tests at all!  You can use **directives** to control these things, as well as to set other options like `waitName` or `printResults`.   A directive is a special kind of HTML comment, set off by blank lines before and after it.  For example, to skip a single test and mark it pending, you can use:
 
 <!--mockdown-set: ++ignore -->
 
@@ -258,6 +274,16 @@ Integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
 When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.) 
 
 ### Controlling Test Output and Expected Result Matching
+
+##### `waitForOutput`
+
+Optional function, string, or regular expression predicate; default `undefined`
+
+If set, the test is considered asynchronous (as if `wait()` were explicitly called), and each string written to the virtual console will be checked using the supplied function, string, or regular expression.  If there is a match, the test will end on the next process tick, without needing to explicitly call a `done()` function.
+
+A function predicate is considered to match if it returns a truthy value for a given output string, and a string predicate is considered to match if it is found at any point within the output string.  Regular expression predicates are matched with `.match()` on the output string.
+
+If a matching string is never written, the test will time out, and then the output up to that point will be compared with the expected output.
 
 ##### `printResults`
 
