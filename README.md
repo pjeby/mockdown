@@ -269,7 +269,7 @@ When a test fails due to unmatched output, show the full expected and received o
 
 Boolean, default: `false`  (New in version 0.4.0)
 
-When a test fails, show the *compiled* code in the error output, instead of the original source.  (Has no effect if `showOutput` is false.)  This can be useful for debugging a broken test case or example. 
+When a test fails, show the *compiled* code in the error output, instead of the original source.  (Has no effect if `showOutput` is false.)  This can be useful for debugging a broken test case or example written in a compile-to-JS language.
 
 ##### `showDiff`
 

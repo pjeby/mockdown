@@ -673,17 +673,17 @@ add in the missing line feeds.
             add = parent.position.end.line - tok.position.end.line
             tok.text += Array(add+1).join('\n')
 
-Finally, mdast's default HTML processing rules don't allow invalid HTML
-comments, such as ones with `--` in the middle of them.  These are kind of
-a core feature for mockdown directives, so we tweak the rule to support
-such comments.
 
-    do (rules = mdast.Parser::expressions.rules) ->
 
-        rules.html = new RegExp rules.html.source.replace(
-            "<!--(?!-?>)(?:[^-]|-(?!-))*-->"
-            "<!--(?:[^-]|-(?!->))*-->"
-        )
+
+
+
+
+
+
+
+
+
 
 
 
