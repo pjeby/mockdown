@@ -1,33 +1,36 @@
 {assign} = require 'prop-schema'
 
 module.exports = ->
-
     babel:
         options:
             retainLines: yes
-        toJS: (example) ->
+        module: 'babel-core'
+        toJS: (example, line) ->
             options = assign {}, @options
             options.filename = example.filename
-            return require('babel').transform(example.offset(), options).code
+            code = example.offset(line)
+            code = require(@module).transform(code, options).code
+            code = example.offset(line, code) unless options.retainLines
+            return code
 
     es6: "babel"
-    
-    "coffee-script":
+
+    coffee:
         options:
             bare: yes
             header: no
-        toJS: (example) ->
+        module: "coffee-script"
+        toJS: (example, line) ->
             options = assign {}, @options
             options.filename = example.filename
             return example.offset(
-                require('coffee-script').compile(example.offset(), options)
+                line,
+                require(@module).compile(example.offset(line), options)
             )
+    "coffee-script": "coffee"
+    "coffeescript": "coffee"
 
-    "coffee": "coffee-script"
-    "coffeescript": "coffee-script"
-
-    javascript:
-        toJS: (example) -> example.offset()
+    javascript: toJS: (example, line) -> example.offset(line)
     js: "javascript"
 
     html: "ignore"

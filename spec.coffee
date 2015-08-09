@@ -385,7 +385,7 @@ describe "mockdown.Example(opts...)", ->
                 expect(err.actual).to.deep.equal ['y','z']
                 expect(err.expected).to.deep.equal ['x','y']
 
-            it "has actual/expected in .message if .showOutput", ->
+            it "has code/actual/expected in .message if .showOutput", ->
                 expect(mismatch(
                     code:'foo()\nbar()', output:'a\nb', showOutput: no, 'b\nc'
                 ).message).to.equal('')
@@ -407,6 +407,47 @@ describe "mockdown.Example(opts...)", ->
                 ).mismatch('y\nz')
                 expect(err.stack.split('\n')[1])
                 .to.equal "  at Example (foo.md:55)"
+
+            it "has compiled code in .message if .showOutput & .showCompiled", ->
+                mismatch(
+                    code:'->', output:'', engine:languages.coffee, line:22,
+                'x').message.split('\n') .should.deep.equal [
+                    '', 'Code:', '    ->'
+                    'Expected:', '>     ', 'Got:',      '>     x',
+                ]
+                mismatch(
+                    code:'->', output:'', engine:languages.coffee, line:22,
+                    showCompiled:yes,
+                'x') .message.split('\n').should.deep.equal [
+                    '', 'Code:', '    (function() {});', '    ',
+                    'Expected:', '>     ', 'Got:',      '>     x',
+                ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     describe ".evaluate(env, params)", ->
 
@@ -644,7 +685,7 @@ describe "mockdown.Example(opts...)", ->
                     @done.should.have.been.called
                     uw.should.be.calledWithExactly(@env)
                     done()
-            
+
         it "records synchronous errors when waiting for async results", ->
                 @runTest new Example(
                     code: 'done = wait(); throw new TypeError("bar")'
@@ -1032,7 +1073,7 @@ describe "mockdown.Document(opts)", ->
 
         it "is a recursive copy", ->
             @c.languages = languages
-            for lang in ['javascript', 'coffee-script']
+            for lang in ['javascript', 'coffee']
                 expect(@c.languages[lang]).to.eql languages[lang], lang
                 expect(@c.languages[lang]).to.not.equal languages[lang], lang
 
@@ -1043,7 +1084,7 @@ describe "mockdown.Document(opts)", ->
 
         it "converts lang to lower case", ->
             expect(@c.getEngine('CoffeeScript'))
-            .to.equal @c.languages['coffee-script']
+            .to.equal @c.languages['coffee']
 
         it "returns undefined for non-existent language", ->
             expect(@c.getEngine('nosuchlang')).to.not.exist

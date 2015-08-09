@@ -55,7 +55,7 @@
 
     mkArray = props.type (val=[]) -> [].concat(val)
     splitLines = (txt) -> txt.split /\r\n?|\n\r?/g
-    offset =  (code, line) -> Array(line).join('\n') + code
+    offset =  (line, code) -> Array(line).join('\n') + code
 
     injectStack = (err, txt, replace=no) ->
         stack = splitLines(err.stack)
@@ -83,7 +83,7 @@
     pattern = props.function.or (val) ->
         if typeof val is "string" then (arg) -> ~arg.indexOf(val)
         else if val instanceof RegExp then (arg) -> arg.match(val)
-        else props.check("must be string, function, or regexp").converter(val)           
+        else props.check("must be string, function, or regexp").converter(val)
 
 ## Options
 
@@ -95,6 +95,7 @@
         ignoreWhitespace:
             bool no, "normalize whitespace for output mathching?"
 
+        showCompiled: bool no, "show compiled code in errors"
         showOutput: bool yes, "show expected/actual output in errors"
         showDiff:   bool no, "use mocha's diffing for match errors"
         stackDepth: infinInt 0, "max # of stack trace lines in error output"
@@ -117,7 +118,6 @@
         filename: string '<anonymous>', "filename for stack traces"
         globals: object {}, "global vars for examples"
         languages: props.type(recursive)(languages, "language specs")
-
 
 
 
@@ -330,8 +330,9 @@
             return if output is @output
             msg = ['']
             if @showOutput
+                code = if @showCompiled then @toJS(1) else @code
                 msg.push 'Code:'
-                msg.push '    '+l for l in splitLines(@code ? '')
+                msg.push '    '+l for l in splitLines(code ? '')
                 msg.push 'Expected:'
                 msg.push '>     '+l for l in expected = splitLines(@output)
                 msg.push 'Got:'
@@ -343,21 +344,20 @@
             err.actual = actual
             return injectStack(err, "  at Example (#{@filename}:#{@line})")
 
-        offset: (code=@code, line=@line) -> offset(code, line)
+        offset: (line=@line, code=@code) -> offset(line, code)
 
-        toJS = (example, env, params) -> env.run(@toJS(example), example)
+        toJS: (line=@line) -> @engine.toJS(this, line)
 
         evaluate: (env, params) ->
             if params
                 for k in Object.keys(params) when name = this[k+"Name"]
                     env.context[name] = params[k]
-            return (@engine.evaluate ? toJS).call(@engine, this, env, params)
+            return env.run(@toJS(), this)
 
         writeError: (env, err) ->
             msgLines = splitLines(err.message).length
             stack = splitLines(err.stack).slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
 
 
 
@@ -595,7 +595,7 @@ predicate returns true, or given thenable resolves or rejects.
 
         directive: (ob, code, line, specs=example_specs) ->
             @directiveEnv(ob, specs).run(
-                offset(code, line), filename: @doc.filename
+                offset(line, code), filename: @doc.filename
             )
 
         directiveEnv: (ob, allowed) ->

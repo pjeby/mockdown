@@ -1,6 +1,9 @@
 # mocha + markdown = mockdown
 
-> **New** in 0.3.0: the [`waitForOutput`](#waitforoutput) option lets you match console output to end an asynchronous test, without needing to call `wait()` in the test itself.  See the section below on [asynchronous tests](#asynchronous-tests) for an example.
+> **New** in 0.4.0:
+> 
+> * The `showCompiled` option lets you show compiled code in error messages
+> * You can specify what `module` to use for the various language engines
 
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
@@ -75,6 +78,7 @@ Mockdown was inspired and influenced both by Python's [`doctest`](https://docs.p
   * [The `mockdown.testFiles()` API](#the-mockdowntestfiles-api)
   * [Controlling How/When Tests Are Added](#controlling-howwhen-tests-are-added)
   * [Using Languages Besides Javascript](#using-languages-besides-javascript)
+* [Changelog](#changelog)
 * [Open Issues/TODO](#open-issuestodo)
 
 <!-- toc stop -->
@@ -259,7 +263,13 @@ If true, do not turn markdown code blocks into examples until it becomes false a
 
 Boolean, default: `true`
 
-When a test fails due to unmatched output, show the full expected and received output.
+When a test fails due to unmatched output, show the full expected and received output, along with the source code of the test.
+
+##### `showCompiled`
+
+Boolean, default: `false`  (New in version 0.4.0)
+
+When a test fails, show the *compiled* code in the error output, instead of the original source.  (Has no effect if `showOutput` is false.)  This can be useful for debugging a broken test case or example. 
 
 ##### `showDiff`
 
@@ -272,6 +282,7 @@ When a test fails due to unmatched output, tell mocha to diff the output.
 Integer from 0 to `Infinity` (i.e., unlimited stack depth).  Default: `0`.
 
 When a test throws an unhandled exception, how many lines of stack trace should be included in the output?  (This lets you add more lines temporarily for debugging, or permanently if the contents of the stack trace are what your example is testing.) 
+
 
 ### Controlling Test Output and Expected Result Matching
 
@@ -329,19 +340,22 @@ An object whose keys are all-lowercase language names, and whose values are lang
 
 (Note: aliases are not recursive; they must name a language engine, not another alias.  They can, however, be set to `"ignore"`, which indicates blocks of that language should be ignored and not used as tests.)
 
-A language engine is an object with one required property, `toJS:`, which must be a function accepting a `mockdown.Example` object and returning a string of Javascript.  Usually, language engines will also include an `options:` property that will be used to send compiler options to the underlying language.  (For example, you can set `languages.babel.options.stage` to change the stability level used for Babel examples.)
+A language engine is an object with one required property, `toJS:`, which must be a function accepting a `mockdown.Example` object and a starting line number, and returning a string of Javascript.  Usually, language engines will also include an `options:` property that will be used to send compiler options to the underlying language.  (For example, you can set `languages.babel.options.stage` to change the stability level used for Babel examples.)
 
 Note that the `languages` option can only be configured via the options passed into mockdown's APIs, or via a `mockdown-setup` directive at the top of a file.  (That is, like `globals`, it can't be set via `mockdown` or `mockdown-set` directives.)
 
 Currently, the default mapping for this option includes language engines for:
 
-* `babel` (with `babel` and `es6` as aliases)
-* `coffee-script` (with `coffee` and `coffeescript` as aliases)
+* `babel` (with `es6` as an alias)
+* `coffee` (with `coffee-script` and `coffeescript` as aliases)
 * `javascript` (with `js` as an alias)
 
 And it includes `html`, `markdown`, and `text` as aliases for `ignore`.
 
 You can add your own aliases and engines to this mapping by in-place modification in `mockdown-setup` code, or by passing a replacement object as a `languages:` option to the API.  (You can also call `require('mockdown/languages')()` to get a copy of the defaults that you can then modify and pass in.)
+
+Both the `babel` and `coffee-script` language engines have a `module` property that can be used to determine what module to load to do the compiling.  `languages.babel.module` defaults to `"babel-core"`, and `languages['coffee-script'].module` defaults to `"coffee-script"`, but you can override them if you need to.
+
 
 ### Other Options
 
@@ -406,10 +420,15 @@ If you're parsing strings, you'll probably want to include a `filename:` entry i
 
 ### Using Languages Besides Javascript
 
-Currently, multi-language support is still experimental.  Most JS transpilers expect to be producing an entire module at a time, rather than a collection of code fragments to be run REPL-style.  So although it "works", you may run into language-specific compilation issues, which may be compounded by the fact that you will only see the original source in error messages, not the compiled source.  (There should probably be an option for that!)
+Currently, multi-language support is still experimental.  Most JS transpilers expect to be producing an entire module at a time, rather than a collection of code fragments to be run REPL-style.  So although it "works", you may run into language-specific compilation issues, and may need to use the `showCompiled` option to display compiled source in error messages so you can see what's really going on.
 
 (Also, note that although mockdown includes engines for Babel and CoffeeScript, it does not declare dependencies on them, as by design it should use *your* installation of the relevant compiler modules.  That way, it will always be in sync with your project's version of the associated compiler.) 
 
+## Changelog
+
+##### New in 0.3.0
+
+* The [`waitForOutput`](#waitforoutput) option lets you match console output to end an asynchronous test, without needing to call `wait()` in the test itself.  See the section above on [asynchronous tests](#asynchronous-tests) for an example.
 
 ## Open Issues/TODO
 
