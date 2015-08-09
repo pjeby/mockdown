@@ -354,7 +354,7 @@ And it includes `html`, `markdown`, and `text` as aliases for `ignore`.
 
 You can add your own aliases and engines to this mapping by in-place modification in `mockdown-setup` code, or by passing a replacement object as a `languages:` option to the API.  (You can also call `require('mockdown/languages')()` to get a copy of the defaults that you can then modify and pass in.)
 
-Both the `babel` and `coffee-script` language engines have a `module` property that can be used to determine what module to load to do the compiling.  `languages.babel.module` defaults to `"babel-core"`, and `languages['coffee-script'].module` defaults to `"coffee-script"`, but you can override them if you need to.
+Both the `babel` and `coffee-script` language engines have a `module` property that can be used to determine what module to load to do the compiling.  `languages.babel.module` defaults to `"babel-core"`, and `languages.coffee.module` defaults to `"coffee-script"`, but you can override them if you need to.
 
 
 ### Other Options
