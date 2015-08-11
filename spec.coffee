@@ -412,14 +412,14 @@ describe "mockdown.Example(opts...)", ->
                 mismatch(
                     code:'->', output:'', engine:languages.coffee, line:22,
                 'x').message.split('\n') .should.deep.equal [
-                    '', 'Code:', '    ->'
+                    '', 'Code:', '    22 | ->'
                     'Expected:', '>     ', 'Got:',      '>     x',
                 ]
                 mismatch(
                     code:'->', output:'', engine:languages.coffee, line:22,
                     showCompiled:yes,
                 'x') .message.split('\n').should.deep.equal [
-                    '', 'Code:', '    (function() {});', '    ',
+                    '', 'Code:', '    22 | (function() {});', '    23 | ',
                     'Expected:', '>     ', 'Got:',      '>     x',
                 ]
 

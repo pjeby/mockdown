@@ -326,13 +326,18 @@
 
         unwatch: (env) -> os = env.outputStream; os.write = os.push
 
+        number = (line, text) ->
+            line = "      #{+line} | #{text}"
+            line.substr(-(9+text.length))
+
         mismatch: (output) ->
             return if output is @output
             msg = ['']
             if @showOutput
                 code = if @showCompiled then @toJS(1) else @code
                 msg.push 'Code:'
-                msg.push '    '+l for l in splitLines(code ? '')
+                for l, i in splitLines(code ? '')
+                    msg.push(if @line? then number(i+@line, l) else '    '+l)
                 msg.push 'Expected:'
                 msg.push '>     '+l for l in expected = splitLines(@output)
                 msg.push 'Got:'
@@ -358,11 +363,6 @@
             msgLines = splitLines(err.message).length
             stack = splitLines(err.stack).slice(0, @stackDepth + msgLines)
             env.context.console.error(stack.join('\n'))
-
-
-
-
-
 
 
 

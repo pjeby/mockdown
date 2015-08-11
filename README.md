@@ -3,6 +3,7 @@
 > **New** or changed in 0.4.0:
 > 
 > * The [`showCompiled` option](#showcompiled) lets you show compiled code in error messages
+> * Code output in error messages now includes source line numbers
 > * You can specify what `module` to use for the various [language engines](#languages)
 > * The [`printResults` option](#printresults) now defaults to `false`, as it tends to produce unwanted output in typical usage.
 
