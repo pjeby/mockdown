@@ -1,9 +1,10 @@
 # mocha + markdown = mockdown
 
-> **New** in 0.4.0:
+> **New** or changed in 0.4.0:
 > 
-> * The `showCompiled` option lets you show compiled code in error messages
-> * You can specify what `module` to use for the various language engines
+> * The [`showCompiled` option](#showcompiled) lets you show compiled code in error messages
+> * You can specify what `module` to use for the various [language engines](#languages)
+> * The [`printResults` option](#printresults) now defaults to `false`, as it tends to produce unwanted output in typical usage.
 
 What better place to specify your code's behavior than in its API documentation?  And how better to document your API than with examples?  But if they're not tested, examples tend to get stale and out-of-date.  And testing them by hand is a pain.
 
@@ -22,8 +23,6 @@ The above is a *documentation test*, or "doctest".  You embed a code block to be
 
 If the output doesn't match, or an unexpected error is thrown, the test fails.  If your test completes asynchronously, you can use `wait()` to defer the test's completion until a callback, promise resolution, or other asynchronous result occurs:
 
-<!-- mockdown: --printResults -->
-
 ```js
 // Using wait() with setTimeout()
 
@@ -39,8 +38,6 @@ setTimeout(function(){
 >     Hello world!
 
 Section headings in your markdown files define mocha suites, so your test suites will precisely match the table of contents of your documentation files.  If you need to do things like mark tests to be skipped or ignored, you can add simple HTML comment directives like this:
-
-<!-- mockdown: ++ignore -->
 
 ```markdown
 <!-- mockdown: ++skip -->
@@ -298,17 +295,20 @@ If a matching string is never written, the test will time out, and then the outp
 
 ##### `printResults`
 
-Boolean, default: `true`.
+Boolean, default: `false`.  (CHANGED in 0.4.0)
 
 If true, the virtual environment acts like the node REPL, printing the value of the last expression in a code sample.
 
-For example:
+For example, the following test requires `printResults` to be true:
+
+<!--mockdown: ++printResults -->
 
 ```js
 6 * 7
 ```
 
 >     42
+
 
 ##### `ignoreUndefined`
 

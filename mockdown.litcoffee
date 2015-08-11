@@ -107,7 +107,7 @@
         waitName: maybe(string) 'wait', "name of 'wait()' function"
         testName: maybe(string) 'test', "name of current mocha test object"
 
-        printResults: bool yes, "output the result of evaluating each example"
+        printResults: bool no, "output the result of evaluating each example"
         ingoreUndefined: bool yes, "don't output undefined results"
         writer:
             maybe(props.function) undefined, "function used to format results"

@@ -655,7 +655,7 @@ describe "mockdown.Example(opts...)", ->
 
 
         it "calls done() after running synchronous code", ->
-            ex = new Example(code: '42', output:'42\n')
+            ex = new Example(code: '42', output:'42\n', printResults: yes)
             @runTest(ex); @checkDone()
             expect(@checked).to.have.been.calledWithExactly('42\n')
 
@@ -832,7 +832,7 @@ describe "mockdown.Example(opts...)", ->
 
         it "invokes testFn w/.getTitle() and a callback that runs .runTest()", (done) ->
 
-            ex = new Example(title: 'foo', code: '42', output: '42\n')
+            ex = new Example(title: 'foo', code: '42', output: '42\n', printResults: yes)
             env = new Environment()
             gts = spy.named 'getTitle', ex, 'getTitle'
             rts = spy.named 'runTest', ex, 'runTest'
