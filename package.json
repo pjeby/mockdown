@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "mdast": "^0.27.2",
-    "mock-globals": "^0.1.2",
+    "mock-globals": "^0.1.3",
     "prop-schema": "^0.2.2"
   }
 }
