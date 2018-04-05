@@ -468,8 +468,8 @@ describe "mockdown.Example(opts...)", ->
                     filename: 'throw-sample.js'
                 )
             catch e
-                s = e.stack.split('\n').slice(0, 2)
-                expect(s).to.deep.equal(['Error', '  at throw-sample.js:42:7'])
+                s = e.stack.split('\n').slice(0, 2).map (x) ->x.trim()
+                expect(s).to.deep.equal(['Error', 'at throw-sample.js:42:7'])
                 return
             throw new Error("Example didn't throw")
 
