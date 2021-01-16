@@ -1,6 +1,6 @@
 {
   "name": "mockdown",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Run your docs' examples as mocha test suites",
   "repository": "git@github.com:pjeby/mockdown.git",
   "homepage": "https://github.com/pjeby/mockdown",
@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "mdast": "^0.27.2",
-    "mock-globals": "^0.1.3",
+    "mock-globals": "^0.1.4",
     "prop-schema": "^0.2.2"
   }
 }
