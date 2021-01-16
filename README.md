@@ -101,7 +101,7 @@ If you don't include all five spaces, the markdown parser will see the blockquot
 
 ### Mocha Test Titles
 
-If your code sample's first non-blank line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language, it'll be used as the test's title, e.g.:
+If your code sample's first non-blank line begins with a line comment (`//`, `#`, `--`, or `%`, depending on your language), it'll be used as the test's title, e.g.:
 
 ```js
 // This will show up as the mocha test title
