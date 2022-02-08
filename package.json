@@ -4,15 +4,14 @@
   "description": "Run your docs' examples as mocha test suites",
   "repository": "git@github.com:pjeby/mockdown.git",
   "homepage": "https://github.com/pjeby/mockdown",
-  "main": "mockdown.js",
+  "main": "dist/mockdown.js",
   "files": [
-    "mockdown.js",
-    "languages.js"
+    "dist/*.js"
   ],
   "scripts": {
-    "test": "gulp test",
-    "prepublish": "gulp build",
-    "prepublishOnly": "gulp build"
+    "watch": "mocha --watch",
+    "test": "mocha",
+    "prepublishOnly": "coffee -o dist -c -b --no-header mockdown.litcoffee languages.coffee"
   },
   "keywords": [
     "mocha",
@@ -26,15 +25,24 @@
   "author": "PJ Eby <pje@telecommunity.com>",
   "license": "ISC",
   "devDependencies": {
-    "babel-core": "^5.8.21",
-    "mocha": "^1.18.2",
-    "coffee-script": "^1.9.3",
-    "gulp-mocha": "^0.4.1",
-    "gulp-coffee": "^2.3.1",
-    "gulp": "^4.0.2",
-    "chai": "^1.9.1",
-    "sinon-chai": "^2.5.0",
-    "sinon": "^1.9.1"
+    "babel-core": "^6",
+    "mocha": "^9",
+    "coffeescript": "^1.9.3",
+    "chai": "^4",
+    "sinon-chai": "^3",
+    "sinon": "^13"
+  },
+  "mocha": {
+    "spec": "spec.coffee",
+    "watch-files": [
+      "mockdown.litcoffee",
+      "languages.coffee",
+      "spec.coffee",
+      "README.md"
+    ],
+    "require": [
+      "coffeescript/register"
+    ]
   },
   "dependencies": {
     "mdast": "^0.27.2",

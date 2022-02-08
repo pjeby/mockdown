@@ -25,7 +25,7 @@ failSafe = (done, fn) -> ->
 {
     lex, Builder, Parser, Section, Example, Environment, Document, Waiter,
     testFiles
-} = require './'
+} = require './mockdown'
 
 languages = require('./languages')()
 
@@ -1283,7 +1283,7 @@ describe "mockdown.Parser(opts)", ->
 
         it "runs code w/filename and line number", ->
             my = this
-            de = stub @p, 'directiveEnv', ->
+            de = stub(@p, 'directiveEnv').callsFake ->
                 e = Parser::directiveEnv.apply(this, arguments)
                 my.r = spy.named 'run', e, 'run'
                 return e
