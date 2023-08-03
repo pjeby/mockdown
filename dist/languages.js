@@ -8,7 +8,7 @@ module.exports = function() {
       options: {
         retainLines: true
       },
-      module: 'babel-core',
+      module: '@babel/core',
       toJS: function(example, line) {
         var code, options;
         options = assign({}, this.options);
@@ -27,7 +27,7 @@ module.exports = function() {
         bare: true,
         header: false
       },
-      module: "coffee-script",
+      module: "coffeescript",
       toJS: function(example, line) {
         var options;
         options = assign({}, this.options);

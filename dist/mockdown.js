@@ -1,4 +1,4 @@
-var Container, bool, document_specs, empty, example_specs, infinInt, injectStack, int, languages, maybe, mdast, mkArray, mockdown, object, offset, pattern, posInt, props, recursive, ref, reformatCode, splitLines, storage_opts, string, toMarked,
+var Container, bool, document_specs, empty, example_specs, infinInt, injectStack, int, languages, maybe, mkArray, mockdown, object, offset, pattern, posInt, props, recursive, ref, reformatCode, remark, splitLines, storage_opts, string, toMarked,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty,
   bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
@@ -805,11 +805,11 @@ mockdown.Parser = (function() {
 
 })();
 
-mdast = require('mdast')();
+remark = require('remark')();
 
 mockdown.lex = function(src) {
   var j, len, ref1, results, tok;
-  ref1 = mdast.parse(src).children;
+  ref1 = remark.parse(src).children;
   results = [];
   for (j = 0, len = ref1.length; j < len; j++) {
     tok = ref1[j];
@@ -832,7 +832,7 @@ toMarked = function(tok, parent) {
         results = [];
         for (j = 0, len = ref2.length; j < len; j++) {
           c = ref2[j];
-          results.push(mdast.stringify(c));
+          results.push(remark.stringify(c));
         }
         return results;
       })()).join('');

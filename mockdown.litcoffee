@@ -617,17 +617,17 @@ predicate returns true, or given thenable resolves or rejects.
 
 Mockdown was originally written to use Marked for turning markdown into tokens.
 Marked, however, created a flat list of tokens that lacked line numbers, so
-we've lately switched to using `mdast` instead.  `mdast` provides an
+we've lately switched to using `remark` instead.  `remark` provides an
 already-built tree structure that mostly resembles Marked tokens, so we convert
 them the rest of the way to the old Marked tokens we were using before.  In
 addition to letting us leave all the other code and tests alone, it also
-shortens the printed representation of tokens compared to raw `mdast` tokens,
+shortens the printed representation of tokens compared to raw `remark` tokens,
 by dropping information we don't need.
 
-    mdast = require('mdast')()  # create a private instance
+    remark = require('remark')()  # create a private instance
 
     mockdown.lex = (src) ->
-        toMarked(tok) for tok in mdast.parse(src).children
+        toMarked(tok) for tok in remark.parse(src).children
 
 Mostly, this conversion consists of renaming nodes' `.value` to `.text` and
 flattening their `.position` to a simple `.line`.  Headings and paragraphs also
@@ -642,7 +642,7 @@ extra work to maintain correct trailing whitespace and start line position.
 
         if tok.children?
             if tok.type in ['heading', 'paragraph']
-                tok.text = (mdast.stringify(c) for c in tok.children).join ''
+                tok.text = (remark.stringify(c) for c in tok.children).join ''
                 delete tok.children
             else tok.children = (toMarked(c, tok) for c in tok.children)
 
@@ -654,7 +654,7 @@ extra work to maintain correct trailing whitespace and start line position.
 
         return tok
 
-`mdast` gives the position range of fenced code blocks with the fences
+`remark` gives the position range of fenced code blocks with the fences
 themselves included in the size.  But those lines aren't part of the `.text`,
 so we can detect the missing lines in order to know that a code block is
 fenced.  And that lets us offset the start line by 1, so `.line` will refer
