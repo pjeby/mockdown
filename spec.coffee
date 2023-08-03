@@ -518,16 +518,16 @@ describe "mockdown.Example(opts...)", ->
                     withSpy @ex, 'unwatch', (uw) =>
                         @ex.watch(@env, pred, d = spy.named 'done', ->)
 
-                        @os.write(Buffer(bad))
+                        @os.write(Buffer.from(bad))
                         nt.should.not.be.called
                         uw.should.not.be.called
 
-                        @os.write(Buffer(good))
+                        @os.write(Buffer.from(good))
                         nt.should.be.calledOnce.and.calledWithExactly(same(d))
                         uw.should.be.calledOnce
 
-                        @os.write(Buffer(bad))
-                        @os.write(Buffer(good))
+                        @os.write(Buffer.from(bad))
+                        @os.write(Buffer.from(good))
                         nt.should.be.calledOnce
                         uw.should.be.calledOnce
 
@@ -536,11 +536,11 @@ describe "mockdown.Example(opts...)", ->
 
                 @ex.watch(@env, @pred, ->)
 
-                @os.write(b1 = Buffer(t1 = "test1"))
+                @os.write(b1 = Buffer.from(t1 = "test1"))
                 push.should.be.calledWithExactly(b1)
                 @pred.should.be.calledWithExactly(t1)
 
-                @os.write(b2 = Buffer(t2 = "test2"))
+                @os.write(b2 = Buffer.from(t2 = "test2"))
                 push.should.be.calledWithExactly(b2)
                 @pred.should.be.calledWithExactly(t2)
 
@@ -1822,7 +1822,7 @@ describe "mockdown.lex(src)", ->
         """, [{
           type: 'blockquote', line: 1, children: [
             {type: 'paragraph', text: 'Text.', line: 1}
-            {type: 'code', text: 'code()', line: 3, lang:null}
+            {type: 'code', text: 'code()', line: 3, lang:null, meta: null}
           ]
         }]
 
@@ -1833,7 +1833,7 @@ describe "mockdown.lex(src)", ->
         >
     """, [
         type: 'blockquote', line: 1, children: [
-            type: 'code', line:1, text: 'Sample\n\nOutput\n', lang: null
+            type: 'code', line:1, text: 'Sample\n\nOutput\n', lang: null, meta: null
         ]
     ]
 

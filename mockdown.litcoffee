@@ -642,7 +642,7 @@ extra work to maintain correct trailing whitespace and start line position.
 
         if tok.children?
             if tok.type in ['heading', 'paragraph']
-                tok.text = (remark.stringify(c) for c in tok.children).join ''
+                tok.text = ((remark.stringify(c) for c in tok.children).join '').trimEnd()
                 delete tok.children
             else tok.children = (toMarked(c, tok) for c in tok.children)
 
