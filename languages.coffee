@@ -4,7 +4,7 @@ module.exports = ->
     babel:
         options:
             retainLines: yes
-        module: 'babel-core'
+        module: '@babel/core'
         toJS: (example, line) ->
             options = assign {}, @options
             options.filename = example.filename
@@ -19,7 +19,7 @@ module.exports = ->
         options:
             bare: yes
             header: no
-        module: "coffee-script"
+        module: "coffeescript"
         toJS: (example, line) ->
             options = assign {}, @options
             options.filename = example.filename
